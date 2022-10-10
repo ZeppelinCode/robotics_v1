@@ -143,7 +143,9 @@ void CollectorControllerExternalBridge::onUserAuthenticateMsg(
 
 void CollectorControllerExternalBridge::onMoveMsg(
     const RobotMoveType::SharedPtr msg) {
+  LOGG("Transport move message RobotMoveType received: %d", static_cast<int>(msg->move_type));
   const auto moveType = getMoveType(msg->move_type);
+  LOGG("Transport move message parsed to domain MoveType: %d", static_cast<int>(moveType));
   if (MoveType::UNKNOWN == moveType) {
     LOGERR("Error, received unsupported MoveType: %d", getEnumValue(moveType));
     return;

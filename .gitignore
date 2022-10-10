@@ -1,6 +1,7 @@
 build
 install
 log
+src/.vscode
 src/robo_collector/.vscode
 src/robo_cllector/install
 src/robo_collector/log
