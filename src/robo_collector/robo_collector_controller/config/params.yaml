@@ -17,6 +17,6 @@
     ros2_executor_threads_num: 4
     
     use_local_controller_mode: True
-    user: not_set
-    repository: not_set
-    commit_sha: not_set
+    user: Kristian Sonev
+    repository: https://github.com/ZeppelinCode/robotics_v1
+    commit_sha: 068cb96f876d17055ea43f808cfffa1ff7f1256d
