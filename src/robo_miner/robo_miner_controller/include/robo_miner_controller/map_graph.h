@@ -4,13 +4,34 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <string>
+
+// https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
+template<typename ... Args>
+std::string string_format( const std::string& format, Args ... args )
+{
+    int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+    if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
+    auto size = static_cast<size_t>( size_s );
+    std::unique_ptr<char[]> buf( new char[ size ] );
+    std::snprintf( buf.get(), size, format.c_str(), args ... );
+    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
 
 struct Coordinate {
     ssize_t x;
     ssize_t y;
 
     Coordinate(ssize_t x, ssize_t y) : x{x}, y{y} {}
+
+    std::string toString() const {
+        return string_format("(%d, %d)", x, y);
+    }
 };
+
+// bool operator==(const Coordinate& lhs, const Coordinate& rhs) {
+//     return lhs.x == rhs.x && lhs.y == rhs.y;
+// }
 
 class GraphNode {
 public:
@@ -20,17 +41,21 @@ public:
     std::string toStringMetadata();
     Coordinate getCoordinate();
     char getBlockType();
+    bool hasBeenVisited();
+    void markVisited();
 private:
     Coordinate mCoordiante;
     char mBlockType; // # -> edge, X -> obstacle
     std::vector<std::shared_ptr<GraphNode>> mNeighbours{};
+    bool mHasBeenVisited;
 };
 
 class MapGraph {
 public:
     MapGraph();
-    void addNode(std::shared_ptr<GraphNode> node);
+    void addNode(const std::shared_ptr<GraphNode> node);
     std::string toString();
+    bool hasCoordinateBeenVisited(const Coordinate& coordinate) const;
 private:
     std::vector<std::shared_ptr<GraphNode>> mNodes{};
 };
