@@ -41,10 +41,14 @@ add_executable(
   ${PROJECT_NAME}
     ${_SRC_DIR}/main.cpp
     ${_INC_DIR}/robo_miner_controller_external_bridge.h
+    ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
     ${_INC_DIR}/map_graph.h
     ${_INC_DIR}/robo_miner_experiment.h
-    ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
     ${_SRC_DIR}/robo_miner_experiment.cpp
+    ${_INC_DIR}/mover_communicator.h
+    ${_SRC_DIR}/mover_communicator.cpp
+    ${_INC_DIR}/miner_navigator.h
+    ${_SRC_DIR}/miner_navigator.cpp
     ${_SRC_DIR}/map_graph.cpp
 )
 
