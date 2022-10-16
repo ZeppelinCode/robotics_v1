@@ -82,7 +82,7 @@ private:
   void goForward();
   void goLeft();
   void goRight();
-  void goBack();
+  // void goBack();
   void backtrackUntilUnstuck();
 };
 #endif
