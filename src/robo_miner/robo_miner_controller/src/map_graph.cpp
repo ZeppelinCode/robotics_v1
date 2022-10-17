@@ -35,6 +35,20 @@ bool MapGraph::hasCoordinateBeenVisited(const Coordinate& targetCoordinate) cons
     return false;
 }
 
+std::optional<std::shared_ptr<GraphNode>> MapGraph::getNodeAtCoordinate(const Coordinate& targetCoordinate) const {
+    for (const auto& node: mNodes) {
+        auto nodeCoordinate = node->getCoordinate();
+        if (nodeCoordinate.x == targetCoordinate.x && nodeCoordinate.y == targetCoordinate.y) {
+            return node; 
+        }
+    }
+    return std::nullopt;
+}
+
+const std::vector<std::shared_ptr<GraphNode>> MapGraph::getNodes() const {
+    return mNodes;
+}
+
 std::string GraphNode::toStringMetadata() {
     std::stringstream representation;
     representation << "x: " << mCoordiante.x 

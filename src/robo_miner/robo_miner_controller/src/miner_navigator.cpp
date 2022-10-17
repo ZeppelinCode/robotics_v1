@@ -75,8 +75,10 @@ static RobotDirection getDirectionOnRightTurn(RobotDirection currentDirection) {
 MinerNavigator::MinerNavigator(
     MoverCommunicator&& moverCommunicator,
     std::shared_ptr<rclcpp::Node> node,
-    std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient
-) : moverCommunicator{moverCommunicator}, node{node}, initialRobotPositionClient{initialRobotPositionClient} {
+    std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient,
+    std::function<void(MapStructure&)> submitMapStructureFn
+) : moverCommunicator{moverCommunicator}, node{node}, 
+    initialRobotPositionClient{initialRobotPositionClient}, submitMapStructureFn{submitMapStructureFn} {
 
   mapGraph = MapGraph{};
   coordinatesTrail = std::stack<Coordinate>{};
@@ -88,7 +90,7 @@ void MinerNavigator::init() {
 
   // Wait for the result. TODO error handling
   if (rclcpp::spin_until_future_complete(node, result) != rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service add_two_ints");
+    RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to get initial position service");
   } 
 
   const std::shared_ptr<QueryInitialRobotPosition::Response> responseData = result.get();
@@ -105,7 +107,6 @@ void MinerNavigator::init() {
   robotState.currentNode = initialNode;
 
   coordinatesTrail.push(Coordinate(0, 0));
-  std::cout << "initial state " << robotState.toString() << std::endl;
 }
 
 std::vector<std::pair<uint8_t, Coordinate>> MinerNavigator::getValidMovementCoordinates() {
@@ -144,11 +145,11 @@ std::vector<std::function<void()>> MinerNavigator::getActionVector() {
   std::vector<std::function<void()>> retval{};
   auto validMovementCoordinates = getValidMovementCoordinates();
 
-  for (const auto& thing : validMovementCoordinates) {
-    const auto idxOfNonCollisionTile = thing.first;
-    const auto coordiante = thing.second;
+  for (const auto& [idxOfNonCollisionTile, coordinate]: validMovementCoordinates) {
+    // const auto idxOfNonCollisionTile = thing.first;
+    // const auto coordiante = thing.second;
     if (idxOfNonCollisionTile == LEFT_INDEX) {
-      if (!mapGraph.hasCoordinateBeenVisited(coordiante)) {
+      if (!mapGraph.hasCoordinateBeenVisited(coordinate)) {
         const auto leftFunction = [this]() {
           this->goLeft();
         };
@@ -157,7 +158,7 @@ std::vector<std::function<void()>> MinerNavigator::getActionVector() {
     }
 
     if (idxOfNonCollisionTile == FORWARD_INDEX) {
-      if (!mapGraph.hasCoordinateBeenVisited(coordiante)) {
+      if (!mapGraph.hasCoordinateBeenVisited(coordinate)) {
         const auto forwardFunction = [this]() {
           this->goForward();
         };
@@ -166,7 +167,7 @@ std::vector<std::function<void()>> MinerNavigator::getActionVector() {
     }
 
     if (idxOfNonCollisionTile == RIGHT_INDEX) {
-      if (!mapGraph.hasCoordinateBeenVisited(coordiante)) {
+      if (!mapGraph.hasCoordinateBeenVisited(coordinate)) {
         const auto rightFunction = [this]() {
           this->goRight();
         };
@@ -200,14 +201,8 @@ void MinerNavigator::exploreMap() {
     possibleActions[0]();
   }
 
-  std::cout << "Map" << std::endl;
-  std::cout << mapGraph.toString() << std::endl;
-
-  std::cout << "Coordinates trail" << std::endl;
   while (!coordinatesTrail.empty()) {
-    Coordinate coord = coordinatesTrail.top();
     coordinatesTrail.pop();
-    std::cout << coord.toString() << std::endl;
   }
 }
 
@@ -226,6 +221,9 @@ std::pair<int32_t, Coordinate> getCoordinateOnbacktrackPath(
   const std::vector<std::pair<uint8_t, Coordinate>>& coordinates,
   const std::stack<Coordinate>& backtrackPath
 ) {
+  if (backtrackPath.empty()) {
+    return std::make_pair(-1, Coordinate(0, 0));
+  }
   const auto topCoordinate = backtrackPath.top();
   for (int i = 0; i < 4; i++) {
     // Try to backtrack with what you see
@@ -243,16 +241,15 @@ std::pair<int32_t, Coordinate> getCoordinateOnbacktrackPath(
   return std::make_pair(-1, Coordinate(0, 0));
 }
 
-void printStack(std::stack<Coordinate> stackCopy) {
-  while (!stackCopy.empty()) {
-    std::cout << stackCopy.top().toString() << " ";
-    stackCopy.pop();
-  }
-  std::cout << std::endl;
-}
+// void printStack(std::stack<Coordinate> stackCopy) {
+//   while (!stackCopy.empty()) {
+//     std::cout << stackCopy.top().toString() << " ";
+//     stackCopy.pop();
+//   }
+//   std::cout << std::endl;
+// }
 
 void MinerNavigator::backtrackUntilUnstuck() {
-  std::cout << "start backtracking" << std::endl;
   auto validMovementCoordinates = getValidMovementCoordinates();
 
   // First turn around
@@ -266,28 +263,26 @@ void MinerNavigator::backtrackUntilUnstuck() {
   }
 
   // Next, eliminate current node from stack we want to be comparing only to things that came before it
-  std::cout << "current coordinate" << robotState.currentNode->getCoordinate().toString() << std::endl;
-  std::cout << "stack before pop last" << std::endl;
-  printStack(coordinatesTrail);
   coordinatesTrail.pop();
-  std::cout << "stack after pop last" << std::endl;
-  printStack(coordinatesTrail);
-  std::cout << "---" << std::endl;
 
   while (true) {
     validMovementCoordinates = getValidMovementCoordinates();
     bool doneBacktracking = hasAtLeastOneUnvisitedCoordiante(mapGraph, validMovementCoordinates);
     if (doneBacktracking) {
-      std::cout << "done backtracking" << std::endl << "===" << std::endl << "===" << std::endl << "===" << std::endl;
       coordinatesTrail.push(robotState.currentNode->getCoordinate());
       break;
     }
 
     auto backtrackObject = getCoordinateOnbacktrackPath(validMovementCoordinates, coordinatesTrail);
-    // Terminating condition: if you can't find the right direction using your current orientation, you need to turn
+    // if you can't find the right direction using your current orientation, you need to turn
     int spinCount = 0;
     while (backtrackObject.first == -1) {
+      // Terminal condition -> we're on the starting tile and have done a 540 turn (everything has been explored)
       if (spinCount > 6) {
+        auto solution = coordinate_remapper::getMapContents(mapGraph);
+        std::cout << "final solution" << std::endl;
+        std::cout << solution.toString() << std::endl;
+        submitMapStructureFn(solution);
         throw std::invalid_argument("terminal condition reached");
       }
       auto result = moverCommunicator.sendTurnRightCommand();
@@ -301,42 +296,23 @@ void MinerNavigator::backtrackUntilUnstuck() {
 
     if (index == LEFT_INDEX) {
       goLeft();
-      std::cout << "current coordinate" << robotState.currentNode->getCoordinate().toString() << std::endl;
-      std::cout << "stack before pop direction left " << std::endl;
-      printStack(coordinatesTrail);
       coordinatesTrail.pop();
       coordinatesTrail.pop();
-      std::cout << "stack after pop direction left " << std::endl;
-      printStack(coordinatesTrail);
-      std::cout << "---" << std::endl;
       continue;
     }
 
     if (index == FORWARD_INDEX) {
       goForward();
-      std::cout << "current coordinate" << robotState.currentNode->getCoordinate().toString() << std::endl;
-      std::cout << "stack before pop direction forward" << std::endl;
-      printStack(coordinatesTrail);
       coordinatesTrail.pop();
       coordinatesTrail.pop();
-      std::cout << "stack after pop direction forward" << std::endl;
-      printStack(coordinatesTrail);
-      std::cout << "---" << std::endl;
       continue;
     }
 
     if (index == RIGHT_INDEX) {
       goRight();
-      std::cout << "current coordinate" << robotState.currentNode->getCoordinate().toString() << std::endl;
-      std::cout << "stack before pop direction right" << std::endl;
-      printStack(coordinatesTrail);
-      std::cout << "---" << std::endl;
       // TODO nasty hack but needed because each goForward adds onto the stack
       coordinatesTrail.pop();
       coordinatesTrail.pop();
-      std::cout << "stack address before " << &coordinatesTrail << std::endl;
-      std::cout << "stack after pop direction right" << std::endl;
-      printStack(coordinatesTrail);
       continue;
     }
   }
@@ -352,27 +328,24 @@ void MinerNavigator::goForward() {
   auto oldCoordinate = robotState.currentNode->getCoordinate();
   const auto newCoordinate = calculateNewCoordianteBasedOnDirection(currentDirection, oldCoordinate);
 
+  const auto potentiallyExistingNode= mapGraph.getNodeAtCoordinate(newCoordinate);
   auto newNode = std::make_shared<GraphNode>(GraphNode(newCoordinate, tileType));
-  // if (!mapGraph.hasCoordinateBeenVisited(newCoordinate)) {
-  // TODO if the node is already in the map, we don't need to add it anymore
-  newNode->markVisited();
-  mapGraph.addNode(newNode);
-  // }
+  if (potentiallyExistingNode) {
+    newNode = *potentiallyExistingNode;
+  } else {
+    newNode->markVisited();
+    mapGraph.addNode(newNode);
+  }
 
   robotState.currentNode = newNode;
 
   coordinatesTrail.push(newCoordinate);
-  std::cout << "moved forward, state updated to " << robotState.toString() << std::endl;
-  std::cout << "~~~" << newCoordinate.toString() << std::endl;
-  printStack(coordinatesTrail);
-  std::cout << "~~~" << std::endl;
 }
 
 void MinerNavigator::goLeft() {
   auto result = moverCommunicator.sendTurnLeftCommand();
   robotState.direction = toDirection(result->robot_position_response.robot_dir);
   robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
-  std::cout << "turning left, state updated to" << robotState.toString() << std::endl;
   goForward();
 }
 
@@ -380,18 +353,5 @@ void MinerNavigator::goRight() {
   auto result = moverCommunicator.sendTurnRightCommand();
   robotState.direction = toDirection(result->robot_position_response.robot_dir);
   robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
-  std::cout << "turning right, state updated to" << robotState.toString() << std::endl;
   goForward();
 }
-
-// void MinerNavigator::goBack() {
-//   auto result = moverCommunicator.sendTurnRightCommand();
-//   robotState.direction = toDirection(result->robot_position_response.robot_dir);
-//   robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
-//   std::cout << "turning right, state updated to" << robotState.toString() << std::endl;
-//   moverCommunicator.sendTurnRightCommand();
-//   robotState.direction = toDirection(result->robot_position_response.robot_dir);
-//   robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
-//   std::cout << "turning right, state updated to" << robotState.toString() << std::endl;
-//   goForward();
-// }

@@ -7,6 +7,7 @@
 #include "robo_miner_controller/mover_communicator.h"
 #include "robo_miner_interfaces/srv/query_initial_robot_position.hpp"
 #include "robo_miner_controller/map_graph.h"
+#include "robo_miner_controller/coordinate_remapper.h"
 
 namespace {
   using QueryInitialRobotPosition = robo_miner_interfaces::srv::QueryInitialRobotPosition;
@@ -62,7 +63,8 @@ public:
   MinerNavigator(
     MoverCommunicator&& moverCommunicator,
     std::shared_ptr<rclcpp::Node> node,
-    std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient 
+    std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient,
+    std::function<void(MapStructure&)> submitMapStructureFn
     );
   void init();
   void exploreMap();
@@ -70,6 +72,7 @@ private:
   MoverCommunicator moverCommunicator;
   std::shared_ptr<rclcpp::Node> node;
   std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient;
+  std::function<void(MapStructure&)> submitMapStructureFn;
 
   RobotState robotState;
   MapGraph mapGraph;

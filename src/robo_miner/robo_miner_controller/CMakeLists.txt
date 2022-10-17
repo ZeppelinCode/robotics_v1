@@ -49,6 +49,8 @@ add_executable(
     ${_SRC_DIR}/mover_communicator.cpp
     ${_INC_DIR}/miner_navigator.h
     ${_SRC_DIR}/miner_navigator.cpp
+    ${_INC_DIR}/coordinate_remapper.h
+    ${_SRC_DIR}/coordinate_remapper.cpp
     ${_SRC_DIR}/map_graph.cpp
 )
 

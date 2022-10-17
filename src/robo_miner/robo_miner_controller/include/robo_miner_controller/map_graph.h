@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <string>
+#include <optional>
 
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
 template<typename ... Args>
@@ -56,6 +57,8 @@ public:
     void addNode(const std::shared_ptr<GraphNode> node);
     std::string toString();
     bool hasCoordinateBeenVisited(const Coordinate& coordinate) const;
+    std::optional<std::shared_ptr<GraphNode>> getNodeAtCoordinate(const Coordinate& coordinate) const;
+    const std::vector<std::shared_ptr<GraphNode>> getNodes() const;
 private:
     std::vector<std::shared_ptr<GraphNode>> mNodes{};
 };
