@@ -43,6 +43,7 @@ add_executable(
     ${_INC_DIR}/robo_miner_controller_external_bridge.h
     ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
     ${_INC_DIR}/map_graph.h
+    ${_SRC_DIR}/map_graph.cpp
     ${_INC_DIR}/robo_miner_experiment.h
     ${_SRC_DIR}/robo_miner_experiment.cpp
     ${_INC_DIR}/mover_communicator.h
@@ -51,7 +52,8 @@ add_executable(
     ${_SRC_DIR}/miner_navigator.cpp
     ${_INC_DIR}/coordinate_remapper.h
     ${_SRC_DIR}/coordinate_remapper.cpp
-    ${_SRC_DIR}/map_graph.cpp
+    ${_INC_DIR}/longest_trail.h
+    ${_SRC_DIR}/longest_trail.cpp
 )
 
 target_include_directories(robo_miner_controller PUBLIC
