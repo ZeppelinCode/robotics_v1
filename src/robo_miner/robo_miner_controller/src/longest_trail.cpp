@@ -9,51 +9,44 @@ bool doesVecContainCoordinate(const std::vector<Coordinate>& data, Coordinate& t
     }
     return false;
 }
-void longestPathAtCoordinate(const std::vector<std::vector<unsigned char>>& data, Coordinate coord, std::vector<Coordinate>& acc) {
+void longestPathAtCoordinate(
+    const std::vector<std::vector<unsigned char>>& data,
+    Coordinate coord,
+    std::vector<Coordinate>& acc,
+    std::vector<Coordinate>& totalVisited
+) {
     if (doesVecContainCoordinate(acc, coord)) {
         return;
     }
-    //     acc.add((i, j))
+    if (doesVecContainCoordinate(totalVisited, coord)) {
+        return;
+    }
+
     acc.emplace_back(coord);
-//     if j > 0:
-//         left_value = d[i][j-1]
-//         if left_value== my_value:
-//             lp2(d, i, j-1, acc)
+    totalVisited.emplace_back(coord);
     auto myValue = data[coord.y][coord.x];
     if (coord.x > 0) {
         auto leftValue = data[coord.y][coord.x - 1];
         if (leftValue == myValue) {
-            longestPathAtCoordinate(data, Coordinate(coord.x - 1, coord.y), acc);
+            longestPathAtCoordinate(data, Coordinate(coord.x - 1, coord.y), acc, totalVisited);
         }
     }
-//     if i > 0:
-//         top_value = d[i - 1][j]
-//         if top_value == my_value:
-//             lp2(d, i - 1, j, acc)
     if (coord.y > 0) {
         auto topValue = data[coord.y - 1][coord.x];
         if (topValue == myValue) {
-            longestPathAtCoordinate(data, Coordinate(coord.x, coord.y-1), acc);
+            longestPathAtCoordinate(data, Coordinate(coord.x, coord.y-1), acc, totalVisited);
         }
     }
-//     if i < len(d)-1:
-//         bottom_value = d[i + 1][j]
-//         if bottom_value== my_value:
-//             lp2(d, i + 1, j, acc)
     if (coord.y < static_cast<ssize_t>(data.size()) - 1) {
-        auto bottomValue = data[coord.x][coord.y + 1];
+        auto bottomValue = data[coord.y + 1][coord.x];
         if (bottomValue == myValue) {
-            longestPathAtCoordinate(data, Coordinate(coord.x, coord.y+1), acc);
+            longestPathAtCoordinate(data, Coordinate(coord.x, coord.y+1), acc, totalVisited);
         }
     }
-//     if j < len(d[0]) - 1:
-//         right_value = d[i][j+1]
-//         if right_value == my_value:
-//             lp2(d, i, j+1, acc)
     if (coord.x < static_cast<ssize_t>(data[0].size()) - 1) {
         auto rightValue = data[coord.y][coord.x + 1];
         if (rightValue == myValue) {
-            longestPathAtCoordinate(data, Coordinate(coord.y, coord.x + 1), acc);
+            longestPathAtCoordinate(data, Coordinate(coord.x + 1, coord.y), acc, totalVisited);
         }
     }
 }
@@ -84,9 +77,21 @@ namespace longest_trail {
             std::cout << std::endl;
         }
 
-        std::cout << "finding longest path" << std::endl;
         std::vector<Coordinate> longestConnected{};
-        longestPathAtCoordinate(grid2d, Coordinate(0, 0), longestConnected);
+        std::vector<Coordinate> totalVisited{};
+        std::vector<Coordinate> currentAcc{};
+        for (size_t i = 0; i < grid2d.size(); i++) {
+            for (size_t j = 0; j < grid2d[0].size(); j++) {
+                std::cout << i << " " << j << std::endl;
+                currentAcc = std::vector<Coordinate>{};
+                longestPathAtCoordinate(grid2d, Coordinate(j, i), currentAcc, totalVisited);
+
+                if (currentAcc.size() > longestConnected.size()) {
+                    longestConnected = currentAcc;
+                }
+            }
+        }
+
         return longestConnected;
     }
 }

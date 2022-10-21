@@ -11,13 +11,21 @@
 #include "robo_miner_controller/coordinate_remapper.h"
 #include "robo_miner_controller/longest_trail.h"
 
-robo_miner_interfaces::msg::FieldPoint coordinateToFieldPoint(Coordinate c) {
+robo_miner_interfaces::msg::FieldPoint coordinateToFieldPoint(const Coordinate& c) {
   robo_miner_interfaces::msg::FieldPoint fieldPoint;
   fieldPoint.row = c.y;
   fieldPoint.col = c.x;
   return fieldPoint;
 }
-// TODO error handling
+
+std::vector<robo_miner_interfaces::msg::FieldPoint> convertCoordinatesToFieldPoints(const std::vector<Coordinate>& coordinates) {
+  std::vector<robo_miner_interfaces::msg::FieldPoint> retval{};
+  for (const auto& coord : coordinates) {
+    retval.emplace_back(coordinateToFieldPoint(coord));
+  }
+  return retval;
+}
+
 int32_t run_experiment() {
   using FieldMapValidate = robo_miner_interfaces::srv::FieldMapValidate;
   using LongestSequenceValidate = robo_miner_interfaces::srv::LongestSequenceValidate;
@@ -45,16 +53,24 @@ int32_t run_experiment() {
     // Longest trail request
     std::cout << "running longest trail" << std::endl;
     auto longestConnectedCoordinates = longest_trail::getLongestTrail(mapStructure);
+    for (const auto c: longestConnectedCoordinates) {
+      std::cout << c.toString() << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "finished longest trail" << std::endl;
     auto sequenceRequest = std::make_shared<LongestSequenceValidate::Request>();
-    std::transform(longestConnectedCoordinates.begin(), longestConnectedCoordinates.end(), sequenceRequest->sequence_points.begin(),
-      &coordinateToFieldPoint);
+    std::cout << "pre transform" << std::endl;
+    sequenceRequest->sequence_points = convertCoordinatesToFieldPoints(longestConnectedCoordinates);;
+    // std::transform(longestConnectedCoordinates.begin(), longestConnectedCoordinates.end(), sequenceRequest->sequence_points.begin(),
+    //   &coordinateToFieldPoint);
+    std::cout << "post transform" << std::endl;
     auto seuqenceResult = validateLongestSequenceClient->async_send_request(sequenceRequest);
         if (rclcpp::spin_until_future_complete(node, seuqenceResult) != rclcpp::FutureReturnCode::SUCCESS) {
       RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call field map valdiate service");
     }
     std::cout << "" << std::endl;
     const auto sequenceResponse = seuqenceResult.get();
-    std::cout << "got sequenceResponse for map submission: " << sequenceResponse->success << " with failure reason" << response->error_reason << std::endl;
+    std::cout << "got sequenceResponse for trail submission : " << sequenceResponse->success << " with failure reason" << response->error_reason << std::endl;
   };
 
   while (!initialPositionClient->wait_for_service(std::chrono::seconds(1))) {

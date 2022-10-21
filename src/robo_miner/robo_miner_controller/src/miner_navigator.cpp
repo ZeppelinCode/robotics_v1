@@ -88,9 +88,9 @@ void MinerNavigator::init() {
   auto request = std::make_shared<QueryInitialRobotPosition::Request>();
   auto result = initialRobotPositionClient->async_send_request(request);
 
-  // Wait for the result. TODO error handling
   if (rclcpp::spin_until_future_complete(node, result) != rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to get initial position service");
+    throw std::invalid_argument("Failed to get initial position of service");
   } 
 
   const std::shared_ptr<QueryInitialRobotPosition::Response> responseData = result.get();
@@ -216,7 +216,6 @@ bool hasAtLeastOneUnvisitedCoordiante(const MapGraph& graph, const std::vector<s
   return false;
 }
 
-// TODO search for all references to thing
 std::pair<int32_t, Coordinate> getCoordinateOnbacktrackPath(
   const std::vector<std::pair<uint8_t, Coordinate>>& coordinates,
   const std::stack<Coordinate>& backtrackPath
@@ -227,10 +226,10 @@ std::pair<int32_t, Coordinate> getCoordinateOnbacktrackPath(
   const auto topCoordinate = backtrackPath.top();
   for (int i = 0; i < 4; i++) {
     // Try to backtrack with what you see
-    for (const auto thing : coordinates) {
-      const auto coordinate = thing.second;
+    for (const auto indexCoordinatePair: coordinates) {
+      const auto coordinate = indexCoordinatePair.second;
       if (topCoordinate.x == coordinate.x && topCoordinate.y == coordinate.y) {
-        return thing;
+        return indexCoordinatePair;
       }
     }
     // If you can't find the backtrack coordinate, turn until you do

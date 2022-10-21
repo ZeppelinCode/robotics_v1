@@ -40,8 +40,8 @@ set(_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_executable(
   ${PROJECT_NAME}
     ${_SRC_DIR}/main.cpp
-    ${_INC_DIR}/robo_miner_controller_external_bridge.h
-    ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
+    # ${_INC_DIR}/robo_miner_controller_external_bridge.h
+    # ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
     ${_INC_DIR}/map_graph.h
     ${_SRC_DIR}/map_graph.cpp
     ${_INC_DIR}/robo_miner_experiment.h
@@ -79,6 +79,9 @@ ament_target_dependencies(
 
 install(TARGETS robo_miner_controller
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

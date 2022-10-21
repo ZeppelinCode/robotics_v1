@@ -15,3 +15,4 @@ src/robo_collector/robo_collector_interfaces/build/
 src/robo_collector/robo_collector_interfaces/install/
 src/robo_collector/robo_collector_interfaces/log/
 src/ur_dev/ur_control_gui/resources/generated/
+src/robo_miner/robo_miner_controller/launch/__pycache__
