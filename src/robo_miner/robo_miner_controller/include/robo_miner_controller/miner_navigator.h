@@ -78,7 +78,6 @@ private:
 
   RobotState robotState;
   MapGraph mapGraph;
-
   std::stack<Coordinate> coordinatesTrail;
 
   std::vector<uint8_t> pickNonCollisionTileIndex();
@@ -92,6 +91,7 @@ private:
   void goToCoordinate(const Coordinate &coord);
   std::vector<Coordinate> getCoordinatesAroundMe();
   Coordinate getClosestLongestTileLinkToMe(std::vector<Coordinate> longestTileLinkCoordinates);
+  void traceLongestTileLink();
   
 };
 #endif

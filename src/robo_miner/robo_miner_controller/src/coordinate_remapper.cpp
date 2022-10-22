@@ -1,6 +1,7 @@
 #include "robo_miner_controller/coordinate_remapper.h"
 #include <memory>
 #include <limits>
+#include <iostream>
 
 namespace coordinate_remapper {
     Coordinate findTopLeftCorner(const MapGraph& graph) {
@@ -74,11 +75,13 @@ namespace coordinate_remapper {
             retVector.at(index) = entry.second;
         }
 
+        std::cout << "top left coordinate " << topLeftCoordinate.toString() << std::endl;
+        std::cout << "smallest " << smallestX << " " << smallestY << std::endl;
         return MapStructure{
             std::move(retVector),
             largestY + 1,
             largestX + 1,
-            topLeftCoordinate
+            Coordinate(smallestX, smallestY)
         };
     }
 }

@@ -55,26 +55,13 @@ void longestPathAtCoordinate(
 // sake of time, an inefficient approach of copying data is used
 namespace longest_trail {
     std::vector<Coordinate> getLongestTrail(const MapStructure& mapStructure) {
-        std::vector<std::vector<unsigned char>> grid2d{};
-        grid2d.resize(mapStructure.rows, std::vector<unsigned char>{});
-
-        for (auto& v : grid2d) {
-            v.resize(mapStructure.cols, '0');
-        }
-
-        // Convert the map structure to a 2d variant
-        for (int i = 0; i < mapStructure.rows; i++) {
-            for (int j = 0; j < mapStructure.cols; j++) {
-                grid2d[i][j] = mapStructure.data[i*mapStructure.cols + j];
-            }
-        }
+        std::vector<std::vector<unsigned char>> grid2d = mapStructure.asMatrix();
 
         std::vector<Coordinate> longestConnected{};
         std::vector<Coordinate> totalVisited{};
         std::vector<Coordinate> currentAcc{};
         for (size_t i = 0; i < grid2d.size(); i++) {
             for (size_t j = 0; j < grid2d[0].size(); j++) {
-                std::cout << i << " " << j << std::endl;
                 currentAcc = std::vector<Coordinate>{};
                 longestPathAtCoordinate(grid2d, Coordinate(j, i), currentAcc, totalVisited);
 

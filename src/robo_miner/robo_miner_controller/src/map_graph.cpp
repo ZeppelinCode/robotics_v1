@@ -83,6 +83,9 @@ void MapGraph::shiftAllNodeCoordiantesToTheRightBy(Coordinate shiftAmount) {
 }
 
 void GraphNode::shiftCoordinateToTheRightBy(Coordinate shiftAmount) {
+    if (mCoordiante.x == 0 && mCoordiante.y == 0) {
+        std::cout << "shifting " << toString() << " by " << shiftAmount.toString() << std::endl;
+    }
     mCoordiante.x -= shiftAmount.x;
     mCoordiante.y -= shiftAmount.y;
 }

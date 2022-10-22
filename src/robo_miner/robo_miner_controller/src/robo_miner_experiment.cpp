@@ -74,14 +74,11 @@ int32_t run_experiment() {
     std::cout << std::endl;
     std::cout << "finished longest trail" << std::endl;
     auto sequenceRequest = std::make_shared<LongestSequenceValidate::Request>();
-    std::cout << "pre transform" << std::endl;
     sequenceRequest->sequence_points = convertCoordinatesToFieldPoints(longestConnectedCoordinates);;
-    std::cout << "post transform" << std::endl;
     auto seuqenceResult = validateLongestSequenceClient->async_send_request(sequenceRequest);
         if (rclcpp::spin_until_future_complete(node, seuqenceResult) != rclcpp::FutureReturnCode::SUCCESS) {
       RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call field map valdiate service");
     }
-    std::cout << "" << std::endl;
     const auto sequenceResponse = seuqenceResult.get();
     std::cout << "got sequenceResponse for trail submission : " << sequenceResponse->success << " with failure reason" << response->error_reason << std::endl;
     return longestConnectedCoordinates;

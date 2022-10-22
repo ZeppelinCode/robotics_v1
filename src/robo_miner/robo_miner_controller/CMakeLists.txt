@@ -54,6 +54,8 @@ add_executable(
     ${_SRC_DIR}/coordinate_remapper.cpp
     ${_INC_DIR}/longest_trail.h
     ${_SRC_DIR}/longest_trail.cpp
+    ${_INC_DIR}/shortest_path.h
+    ${_SRC_DIR}/shortest_path.cpp
 )
 
 target_include_directories(robo_miner_controller PUBLIC

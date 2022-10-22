@@ -4,7 +4,15 @@
 #include <algorithm>
 
 #include "robo_miner_controller/miner_navigator.h"
+#include "robo_miner_controller/shortest_path.h"
 #include "robo_miner_interfaces/msg/robot_position_response.hpp"
+
+// static void printStack(std::stack<Coordinate> coords) {
+//   while(!coords.empty()) {
+//     std::cout << coords.top().toString() << " ";
+//     coords.pop();
+//   }
+// }
 
 namespace {
     using RobotPositionResponse = robo_miner_interfaces::msg::RobotPositionResponse;
@@ -167,7 +175,8 @@ std::vector<std::pair<uint8_t, Coordinate>> MinerNavigator::getValidMovementCoor
   std::vector<std::pair<uint8_t, Coordinate>> retval{};
   std::vector<uint8_t> possibleDirections{};
   for (int i = 0; i < 3; i++) {
-    if (robotState.surroundingTiles[i] != 'X' && robotState.surroundingTiles[i] != '#') {
+    // if (robotState.surroundingTiles[i] != 'X' && robotState.surroundingTiles[i] != '#') {
+    if (!isCollisionTile(robotState, i)) {
       possibleDirections.emplace_back(i);
     }
   }
@@ -323,17 +332,29 @@ void MinerNavigator::backtrackUntilUnstuck() {
       // Terminal condition -> we're on the starting tile and have done a 540 turn (everything has been explored)
       if (spinCount > 6) {
         auto solution = coordinate_remapper::getMapContents(mapGraph);
-        std::cout << "final mapped coordinates" << std::endl;
-        for (const auto& n: mapGraph.getNodes()) {
-          std::cout << n->getCoordinate().toString() << std::endl;
-        }
         mapGraph.shiftAllNodeCoordiantesToTheRightBy(solution.topLeftCoordinateBeforeRemapping);
         std::vector<Coordinate> longestTileLink = submitMapStructureFn(solution);
         printVector(longestTileLink, "longestTileLink");
         const auto closestCoordOfLink = getClosestLongestTileLinkToMe(longestTileLink);
-        std::cout << closestCoordOfLink.toString() << std::endl;
-        goToCoordinate(closestCoordOfLink);
+        std::cout << "closest " << closestCoordOfLink.toString()
+          << "me " << robotState.currentNode->getCoordinate().toString() 
+          << "me tile " << robotState.currentNode->getBlockType()
+          << std::endl;
+        // goToCoordinate(Coordinate(5,1));
+        // goToCoordinate(closestCoordOfLink);
+        const auto solutionAsMatrix = solution.asMatrix();
+        std::cout << "as matrix, pre shortest path" << std::endl;
+        const auto shortestPathToEnterClosestCoordOnLink = shortest_path::shortestPathFromTo(
+          solutionAsMatrix, 
+          robotState.currentNode->getCoordinate(),
+          closestCoordOfLink);
+        printVector(shortestPathToEnterClosestCoordOnLink, "shortest path");
+        for (const auto& coord: shortestPathToEnterClosestCoordOnLink) {
+          goToCoordinate(coord);
+        }
+        
         activateMiningValidateFn();
+        traceLongestTileLink();
         throw std::invalid_argument("terminal condition reached");
       }
       auto result = moverCommunicator.sendTurnRightCommand();
@@ -367,6 +388,51 @@ void MinerNavigator::backtrackUntilUnstuck() {
       continue;
     }
   }
+}
+
+void MinerNavigator::traceLongestTileLink() {
+  // clear so far so that the starting position becomes the current position
+  while (!coordinatesTrail.empty()) {
+    coordinatesTrail.pop();
+  }
+  std::stack<Coordinate> turnStack;
+
+  const auto crystalType = robotState.currentNode->getBlockType();
+  while (true) {
+    if (robotState.surroundingTiles[LEFT_INDEX] == crystalType) {
+      goLeft();
+      turnStack.push(robotState.currentNode->getCoordinate()); //
+      continue;
+    }
+    if (robotState.surroundingTiles[FORWARD_INDEX] == crystalType) {
+      goForward();
+      continue;
+    }
+    if (robotState.surroundingTiles[RIGHT_INDEX] == crystalType) {
+      goRight();
+      turnStack.push(robotState.currentNode->getCoordinate()); //
+      continue;
+    }
+
+    // // backtrack until last turn
+    // while (robotState.currentNode->getCoordinate().x != turnStack.top().x
+    //       && robotState.currentNode->getCoordinate().y != turnStack.top().y
+    // ) {
+    //   std::cout << "pre" << std::endl;
+    //   printStack(coordinatesTrail);
+    //   coordinatesTrail.pop();
+    //   goToCoordinate(coordinatesTrail.top());
+    //   coordinatesTrail.pop();
+    //   std::cout << "post" << std::endl;
+    //   printStack(coordinatesTrail);
+    // }
+    // turnStack.pop();
+
+
+    // // go back to last turn
+    turnAround(); //
+  }
+
 }
 
 void MinerNavigator::goForward() {
@@ -504,37 +570,14 @@ void populatePossibleVisitLocations(
 }
 
 void MinerNavigator::goToCoordinate(const Coordinate& target) {
-  // // need the whole map revealed
-  // (-3, -1)
   // FRONT, RIGHT, BEHIND, LEFT
-
-  // if the best directions are collision tiles, you need to ban the current location
-  // if front and at least one side are blocked => you're in a corner, need to backtrack one and ban the current coordinate
-
-  // while (robotState.currentNode->getCoordinate() != target) {
-  std::cout << "target " << target.toString() << std::endl;
   std::vector<DirectionDistanceCoordinate> possibleVisitLocations{};
   while (!(robotState.currentNode->getCoordinate().x == target.x && robotState.currentNode->getCoordinate().y == target.y)) {
 
     auto coordinatesAroundMe = getCoordinatesAroundMe();
     auto currentNodeClosestCoordinateDirections = getSortedClosestCoordinateDirections(robotState, coordinatesAroundMe, target);
-    // Only if not collidable
     populatePossibleVisitLocations(possibleVisitLocations, currentNodeClosestCoordinateDirections, robotState);
-    // possibleVisitLocations.insert(possibleVisitLocations.end(), currentNodeClosestCoordinateDirections.begin(), currentNodeClosestCoordinateDirections.end());
-    // if the closest one here is less than a possibility for visiting, self call yourself to go to the possibility
     auto closestOfPossibleVisitLocations = getLocationWithBestCost(possibleVisitLocations, robotState.currentNode->getCoordinate());
-    std::cout << "current coord " << robotState.currentNode->getCoordinate().toString() << std::endl;
-    printVector(possibleVisitLocations, "possibleVisitLocations");
-    std::cout << "===" << std::endl;
-    std::cout << "best visible" << std::endl;
-    std::cout << currentNodeClosestCoordinateDirections[0].toString() << std::endl;
-    std::cout << "best from path" << std::endl;
-    std::cout << closestOfPossibleVisitLocations.toString() << std::endl;
-    std::cout << "===" << std::endl;
-    std::cout << "location with best cost " << closestOfPossibleVisitLocations.toString() << std::endl;
-    printVector(currentNodeClosestCoordinateDirections, "closest coordinate directions");
-    std::cout << " ---- " << std::endl;
-    std::cout << " ---- " << std::endl;
     if (closestOfPossibleVisitLocations.distance < currentNodeClosestCoordinateDirections[0].distance) {
       goToCoordinate(closestOfPossibleVisitLocations.coordinate);
     }
@@ -544,49 +587,19 @@ void MinerNavigator::goToCoordinate(const Coordinate& target) {
         if (!isCollisionTile(robotState, FORWARD_INDEX)) {
           goForward();
           break;
-        } else {
-          std::cout << "forward" << std::endl;
-          std::cout << robotState.toString() << std::endl;
-          std::cout << "~~~" << std::endl;
         }
-        // else {
-        //   std::cout << "collision tile detected, state: " << robotState.toString() 
-        //             << "; clockwise index: " << closestCoordinateDirection.clockwiseIndex
-        //             << ";  banning " << closestCoordinateDirection.coordinate.toString() << std::endl;
-        //   bannedCoordinates.emplace_back(closestCoordinateDirection.coordinate);
-        // }
       }
       if (closestCoordinateDirection.clockwiseIndex == CLOCKWISE_RIGHT_INDEX) {
         if (!isCollisionTile(robotState, RIGHT_INDEX)) {
           goRight();
           break;
-        }  else {
-          std::cout << "right" << std::endl;
-          std::cout << robotState.toString() << std::endl;
-          std::cout << "~~~" << std::endl;
         }
-        // else {
-        //   std::cout << "collision tile detected, state: " << robotState.toString() 
-        //             << "; clockwise index: " << closestCoordinateDirection.clockwiseIndex
-        //             << ";  banning " << closestCoordinateDirection.coordinate.toString() << std::endl;
-        //   bannedCoordinates.emplace_back(closestCoordinateDirection.coordinate);
-        // }
       }
       if (closestCoordinateDirection.clockwiseIndex == CLOCKWISE_LEFT_INDEX) {
         if (!isCollisionTile(robotState, LEFT_INDEX)) {
           goLeft();
           break;
-        }  else {
-          std::cout << "left" << std::endl;
-          std::cout << robotState.toString() << std::endl;
-          std::cout << "~~~" << std::endl;
         }
-        // else {
-        //   std::cout << "collision tile detected, state: " << robotState.toString() 
-        //             << "; clockwise index: " << closestCoordinateDirection.clockwiseIndex
-        //             << ";  banning " << closestCoordinateDirection.coordinate.toString() << std::endl;
-        //   bannedCoordinates.emplace_back(closestCoordinateDirection.coordinate);
-        // }
       }
       if (closestCoordinateDirection.clockwiseIndex == CLOCKWISE_BEHIND_INDEX) {
         turnAround();
@@ -597,16 +610,6 @@ void MinerNavigator::goToCoordinate(const Coordinate& target) {
   }
 }
 
-// static bool coordinateInVector(const Coordinate& target, std::vector<Coordinate>& coordinates) {
-//   for (const auto& c: coordinates) {
-//     if (c == target) {
-//       return true;
-//     }
-//   }
-//   return false;
-// }
-
-// std::vector<Coordinate> MinerNavigator::getCoordinatesAroundMe(std::vector<Coordinate>& bannedCoordinates) {
 std::vector<Coordinate> MinerNavigator::getCoordinatesAroundMe() {
   // printVector(bannedCoordinates, "banned coordinates");
   // (void) bannedCoordinates;
