@@ -61,8 +61,6 @@ int32_t run_experiment() {
     auto sequenceRequest = std::make_shared<LongestSequenceValidate::Request>();
     std::cout << "pre transform" << std::endl;
     sequenceRequest->sequence_points = convertCoordinatesToFieldPoints(longestConnectedCoordinates);;
-    // std::transform(longestConnectedCoordinates.begin(), longestConnectedCoordinates.end(), sequenceRequest->sequence_points.begin(),
-    //   &coordinateToFieldPoint);
     std::cout << "post transform" << std::endl;
     auto seuqenceResult = validateLongestSequenceClient->async_send_request(sequenceRequest);
         if (rclcpp::spin_until_future_complete(node, seuqenceResult) != rclcpp::FutureReturnCode::SUCCESS) {
@@ -71,6 +69,7 @@ int32_t run_experiment() {
     std::cout << "" << std::endl;
     const auto sequenceResponse = seuqenceResult.get();
     std::cout << "got sequenceResponse for trail submission : " << sequenceResponse->success << " with failure reason" << response->error_reason << std::endl;
+    return longestConnectedCoordinates;
   };
 
   while (!initialPositionClient->wait_for_service(std::chrono::seconds(1))) {

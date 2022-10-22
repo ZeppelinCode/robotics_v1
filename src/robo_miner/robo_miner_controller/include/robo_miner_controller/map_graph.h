@@ -28,11 +28,10 @@ struct Coordinate {
     std::string toString() const {
         return string_format("(%d, %d)", x, y);
     }
+    bool operator==(const Coordinate& o)const {
+        return o.x == x && o.y == y;
+    }
 };
-
-// bool operator==(const Coordinate& lhs, const Coordinate& rhs) {
-//     return lhs.x == rhs.x && lhs.y == rhs.y;
-// }
 
 class GraphNode {
 public:
@@ -44,6 +43,7 @@ public:
     char getBlockType();
     bool hasBeenVisited();
     void markVisited();
+    void shiftCoordinateToTheRightBy(Coordinate shiftAmount);
 private:
     Coordinate mCoordiante;
     char mBlockType; // # -> edge, X -> obstacle
@@ -59,6 +59,7 @@ public:
     bool hasCoordinateBeenVisited(const Coordinate& coordinate) const;
     std::optional<std::shared_ptr<GraphNode>> getNodeAtCoordinate(const Coordinate& coordinate) const;
     const std::vector<std::shared_ptr<GraphNode>> getNodes() const;
+    void shiftAllNodeCoordiantesToTheRightBy(Coordinate shiftAmount);
 private:
     std::vector<std::shared_ptr<GraphNode>> mNodes{};
 };

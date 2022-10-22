@@ -77,7 +77,8 @@ namespace coordinate_remapper {
         return MapStructure{
             std::move(retVector),
             largestY + 1,
-            largestX + 1
+            largestX + 1,
+            topLeftCoordinate
         };
     }
 }

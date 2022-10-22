@@ -10,6 +10,7 @@ struct MapStructure {
     std::vector<unsigned char> data;
     ssize_t rows;
     ssize_t cols;
+    Coordinate topLeftCoordinateBeforeRemapping;
 
     std::string toString() {
         std::stringstream representation;

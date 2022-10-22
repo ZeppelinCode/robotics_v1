@@ -69,14 +69,6 @@ namespace longest_trail {
             }
         }
 
-        std::cout << "remapped" << std::endl;
-        for (const auto& row : grid2d) {
-            for (const auto& v: row) {
-                std::cout << v;
-            }
-            std::cout << std::endl;
-        }
-
         std::vector<Coordinate> longestConnected{};
         std::vector<Coordinate> totalVisited{};
         std::vector<Coordinate> currentAcc{};

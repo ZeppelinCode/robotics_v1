@@ -64,7 +64,7 @@ public:
     MoverCommunicator&& moverCommunicator,
     std::shared_ptr<rclcpp::Node> node,
     std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient,
-    std::function<void(MapStructure&)> submitMapStructureFn
+    std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn
     );
   void init();
   void exploreMap();
@@ -72,7 +72,7 @@ private:
   MoverCommunicator moverCommunicator;
   std::shared_ptr<rclcpp::Node> node;
   std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient;
-  std::function<void(MapStructure&)> submitMapStructureFn;
+  std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn;
 
   RobotState robotState;
   MapGraph mapGraph;
@@ -85,7 +85,11 @@ private:
   void goForward();
   void goLeft();
   void goRight();
-  // void goBack();
+  void turnAround();
   void backtrackUntilUnstuck();
+  void goToCoordinate(const Coordinate &coord);
+  std::vector<Coordinate> getCoordinatesAroundMe();
+  Coordinate getClosestLongestTileLinkToMe(std::vector<Coordinate> longestTileLinkCoordinates);
+  
 };
 #endif

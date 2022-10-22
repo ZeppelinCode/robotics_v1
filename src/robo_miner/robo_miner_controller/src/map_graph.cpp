@@ -76,6 +76,17 @@ void MapGraph::addNode(std::shared_ptr<GraphNode> node) {
     mNodes.emplace_back(node);
 }
 
+void MapGraph::shiftAllNodeCoordiantesToTheRightBy(Coordinate shiftAmount) {
+    for (auto& node: mNodes) {
+        node->shiftCoordinateToTheRightBy(shiftAmount);
+    }
+}
+
+void GraphNode::shiftCoordinateToTheRightBy(Coordinate shiftAmount) {
+    mCoordiante.x -= shiftAmount.x;
+    mCoordiante.y -= shiftAmount.y;
+}
+
 std::string MapGraph::toString() {
     std::stringstream representation;
     for (const auto& node : mNodes) {
