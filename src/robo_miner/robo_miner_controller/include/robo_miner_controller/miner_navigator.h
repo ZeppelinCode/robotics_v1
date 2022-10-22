@@ -64,7 +64,8 @@ public:
     MoverCommunicator&& moverCommunicator,
     std::shared_ptr<rclcpp::Node> node,
     std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient,
-    std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn
+    std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn,
+    std::function<void()> activateMiningValidateFn
     );
   void init();
   void exploreMap();
@@ -73,6 +74,7 @@ private:
   std::shared_ptr<rclcpp::Node> node;
   std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient;
   std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn;
+  std::function<void()> activateMiningValidateFn;
 
   RobotState robotState;
   MapGraph mapGraph;

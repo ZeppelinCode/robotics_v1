@@ -113,9 +113,12 @@ MinerNavigator::MinerNavigator(
     MoverCommunicator&& moverCommunicator,
     std::shared_ptr<rclcpp::Node> node,
     std::shared_ptr<rclcpp::Client<QueryInitialRobotPosition>> initialRobotPositionClient,
-    std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn
+    std::function<std::vector<Coordinate>(MapStructure&)> submitMapStructureFn,
+    std::function<void()> activateMiningValidateFn
 ) : moverCommunicator{moverCommunicator}, node{node}, 
-    initialRobotPositionClient{initialRobotPositionClient}, submitMapStructureFn{submitMapStructureFn} {
+    initialRobotPositionClient{initialRobotPositionClient}, submitMapStructureFn{submitMapStructureFn},
+    activateMiningValidateFn{activateMiningValidateFn}
+{
 
   mapGraph = MapGraph{};
   coordinatesTrail = std::stack<Coordinate>{};
@@ -330,6 +333,7 @@ void MinerNavigator::backtrackUntilUnstuck() {
         const auto closestCoordOfLink = getClosestLongestTileLinkToMe(longestTileLink);
         std::cout << closestCoordOfLink.toString() << std::endl;
         goToCoordinate(closestCoordOfLink);
+        activateMiningValidateFn();
         throw std::invalid_argument("terminal condition reached");
       }
       auto result = moverCommunicator.sendTurnRightCommand();
@@ -453,21 +457,6 @@ static std::vector<DirectionDistanceCoordinate> getSortedClosestCoordinateDirect
   for (size_t clockWiseDirectionIdex = 0; clockWiseDirectionIdex < aroundMe.size(); clockWiseDirectionIdex++) {
     auto coordinate = aroundMe[clockWiseDirectionIdex];
     auto distance = manhattanDistance(coordinate, target);
-    // if (clockWiseDirectionIdex == CLOCKWISE_FORWARD_INDEX) {
-    //     if (!isCollisionTile(robotState, FORWARD_INDEX)) {
-    //       continue;
-    //     }
-    // }
-    // if (clockWiseDirectionIdex == CLOCKWISE_LEFT_INDEX) {
-    //     if (!isCollisionTile(robotState, LEFT_INDEX)) {
-    //       continue;
-    //     }
-    // }
-    // if (clockWiseDirectionIdex == CLOCKWISE_RIGHT_INDEX) {
-    //     if (!isCollisionTile(robotState, RIGHT_INDEX)) {
-    //       continue;
-    //     }
-    // }
     directionDistanceCoordinates.emplace_back(DirectionDistanceCoordinate{coordinate, clockWiseDirectionIdex, distance});
   }
   std::sort(directionDistanceCoordinates.begin(), directionDistanceCoordinates.end(), [](const DirectionDistanceCoordinate& p1, DirectionDistanceCoordinate& p2) {
@@ -476,12 +465,6 @@ static std::vector<DirectionDistanceCoordinate> getSortedClosestCoordinateDirect
 
   return directionDistanceCoordinates;
 }
-
-// bool isInSomeCorner(const RobotState& robotState) {
-//   // TOP AND
-//   return (isCollisionTile(robotState, FORWARD_INDEX) && isCollisionTile(robotState, LEFT_INDEX)) 
-//       || (isCollisionTile(robotState, FORWARD_INDEX) && isCollisionTile(robotState, RIGHT_INDEX));
-// }
 
 DirectionDistanceCoordinate getLocationWithBestCost(const std::vector<DirectionDistanceCoordinate> coordinates, const Coordinate& me) {
   DirectionDistanceCoordinate smallest{Coordinate(0, 0), 100, std::numeric_limits<ssize_t>::max()};
@@ -532,19 +515,8 @@ void MinerNavigator::goToCoordinate(const Coordinate& target) {
   std::cout << "target " << target.toString() << std::endl;
   std::vector<DirectionDistanceCoordinate> possibleVisitLocations{};
   while (!(robotState.currentNode->getCoordinate().x == target.x && robotState.currentNode->getCoordinate().y == target.y)) {
-    // if (isInSomeCorner(robotState)) {
-    //   printVector(bannedCoordinates, "banned coordinates in");
-    //   std::cout << "current coord " << robotState.currentNode->getCoordinate().toString() << std::endl;
-    //   std::cout << "bbbbbbb" << std::endl;
-    //   bannedCoordinates.emplace_back(robotState.currentNode->getCoordinate());
-    //   turnAround();
-    //   goForward();
-    //   // backtrack one and ban current coordinate
-    // }
 
     auto coordinatesAroundMe = getCoordinatesAroundMe();
-    // std::cout << coordinatesAroundMe.size() << std::endl;
-    // printVector(coordinatesAroundMe, "coordinates around me");
     auto currentNodeClosestCoordinateDirections = getSortedClosestCoordinateDirections(robotState, coordinatesAroundMe, target);
     // Only if not collidable
     populatePossibleVisitLocations(possibleVisitLocations, currentNodeClosestCoordinateDirections, robotState);
