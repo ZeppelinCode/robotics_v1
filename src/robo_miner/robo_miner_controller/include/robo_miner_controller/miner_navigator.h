@@ -48,7 +48,7 @@ struct RobotState {
     std::shared_ptr<GraphNode> currentNode,
     std::array<uint8_t, 3> surroundingTiles) : direction{direction}, currentNode{currentNode}, surroundingTiles{surroundingTiles} {}
 
-  std::string toString() {
+  std::string toString()const {
     std::stringstream r;
     r << "direction: " << dirToStr(direction) << ", surroundingTiles: ";
     for (int i = 0; i < 3; i++) {

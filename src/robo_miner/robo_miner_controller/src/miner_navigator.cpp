@@ -2,6 +2,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <random>
 
 #include "robo_miner_controller/miner_navigator.h"
 #include "robo_miner_controller/shortest_path.h"
@@ -14,6 +15,14 @@
 //   }
 // }
 
+static bool isCoordinateInVector(const Coordinate& target, const std::vector<Coordinate>& coordinates) {
+  for (const auto& c: coordinates) {
+    if (c == target) {
+      return true;
+    }
+  }
+  return false;
+}
 namespace {
     using RobotPositionResponse = robo_miner_interfaces::msg::RobotPositionResponse;
     constexpr auto LEFT_INDEX = 0;
@@ -76,6 +85,57 @@ static Coordinate calculateNewCoordianteBasedOnDirection(RobotDirection currentD
     return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
   case RobotDirection::DOWN:
     return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+  default:
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  }
+}
+
+static Coordinate calculateNewCoordianteBasedOnDirectionAndTurnIndex(RobotDirection currentDirection, Coordinate oldCoordinate, uint8_t turnIndex) {
+  switch (currentDirection) {
+  case RobotDirection::LEFT:
+    if (turnIndex == LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    if (turnIndex == FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    if (turnIndex == RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::UP:
+    if (turnIndex == LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    if (turnIndex == FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    if (turnIndex == RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::RIGHT:
+    if (turnIndex == LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    if (turnIndex == FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    if (turnIndex == RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::DOWN:
+    if (turnIndex == LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    if (turnIndex == FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    if (turnIndex == RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
   default:
     return Coordinate(oldCoordinate.x, oldCoordinate.y);
   }
@@ -154,20 +214,6 @@ void MinerNavigator::init() {
   robotState.surroundingTiles = robotPositionResponse.surrounding_tiles;
   robotState.currentNode = initialNode;
 
-  // std::cout <<"go to coordinate" << std::endl;
-  // goToCoordinate(Coordinate(-4,-5));
-  // std::cout << "intermediate location " << robotState.currentNode->getCoordinate().toString() << std::endl;
-  // goToCoordinate(Coordinate(-4, -3));
-  // std::cout << "final location " << robotState.currentNode->getCoordinate().toString() << std::endl;
-  // std::cout << "intermediate location " << robotState.currentNode->getCoordinate().toString() << std::endl;
-  // goToCoordinate(Coordinate(-4, -5));
-  // goToCoordinate(Coordinate(0, 0));
-  // goToCoordinate(Coordinate(-4, -5));
-  // // goToCoordinate(Coordinate(-3, -4));
-  // goToCoordinate(Coordinate(0, 0));
-  // throw std::invalid_argument("done");
-  // std::cout <<"/go to coordinate" << std::endl;
-
   coordinatesTrail.push(Coordinate(0, 0));
 }
 
@@ -175,7 +221,6 @@ std::vector<std::pair<uint8_t, Coordinate>> MinerNavigator::getValidMovementCoor
   std::vector<std::pair<uint8_t, Coordinate>> retval{};
   std::vector<uint8_t> possibleDirections{};
   for (int i = 0; i < 3; i++) {
-    // if (robotState.surroundingTiles[i] != 'X' && robotState.surroundingTiles[i] != '#') {
     if (!isCollisionTile(robotState, i)) {
       possibleDirections.emplace_back(i);
     }
@@ -293,10 +338,6 @@ std::pair<int32_t, Coordinate> getCoordinateOnbacktrackPath(
         return indexCoordinatePair;
       }
     }
-    // If you can't find the backtrack coordinate, turn until you do
-    // auto result = moverCommunicator.sendTurnRightCommand();
-    // robotState.direction = toDirection(result->robot_position_response.robot_dir);
-    // robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
   }
   return std::make_pair(-1, Coordinate(0, 0));
 }
@@ -334,21 +375,12 @@ void MinerNavigator::backtrackUntilUnstuck() {
         auto solution = coordinate_remapper::getMapContents(mapGraph);
         mapGraph.shiftAllNodeCoordiantesToTheRightBy(solution.topLeftCoordinateBeforeRemapping);
         std::vector<Coordinate> longestTileLink = submitMapStructureFn(solution);
-        printVector(longestTileLink, "longestTileLink");
         const auto closestCoordOfLink = getClosestLongestTileLinkToMe(longestTileLink);
-        std::cout << "closest " << closestCoordOfLink.toString()
-          << "me " << robotState.currentNode->getCoordinate().toString() 
-          << "me tile " << robotState.currentNode->getBlockType()
-          << std::endl;
-        // goToCoordinate(Coordinate(5,1));
-        // goToCoordinate(closestCoordOfLink);
         const auto solutionAsMatrix = solution.asMatrix();
-        std::cout << "as matrix, pre shortest path" << std::endl;
         const auto shortestPathToEnterClosestCoordOnLink = shortest_path::shortestPathFromTo(
           solutionAsMatrix, 
           robotState.currentNode->getCoordinate(),
           closestCoordOfLink);
-        printVector(shortestPathToEnterClosestCoordOnLink, "shortest path");
         for (const auto& coord: shortestPathToEnterClosestCoordOnLink) {
           goToCoordinate(coord);
         }
@@ -390,47 +422,103 @@ void MinerNavigator::backtrackUntilUnstuck() {
   }
 }
 
+static void printStack(std::stack<Coordinate> s) {
+  while (!s.empty()) {
+    std::cout << s.top().toString() << " ";
+    s.pop();
+  }
+  std::cout << std::endl;
+}
+
+bool canMoveToAtLeastOneLocation(
+  const RobotState& robotState,
+  unsigned char targetCrystalType,
+  const std::vector<Coordinate>& visitedDuringTrace) {
+  const auto potentialCoordinateLeft = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+    robotState.direction,
+    robotState.currentNode->getCoordinate(),
+    LEFT_INDEX) ;
+  const auto potentialCoordinateForward = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+    robotState.direction,
+    robotState.currentNode->getCoordinate(),
+    FORWARD_INDEX);
+  const auto potentialCoordinateRight = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+    robotState.direction,
+    robotState.currentNode->getCoordinate(),
+    RIGHT_INDEX);
+
+  auto canLeftBeVisited = robotState.surroundingTiles[LEFT_INDEX] == targetCrystalType && !isCoordinateInVector(potentialCoordinateLeft, visitedDuringTrace);
+  auto canForwardBeVisited = robotState.surroundingTiles[FORWARD_INDEX] == targetCrystalType && !isCoordinateInVector(potentialCoordinateForward, visitedDuringTrace);
+  auto canRightBeVisited = robotState.surroundingTiles[RIGHT_INDEX] == targetCrystalType && !isCoordinateInVector(potentialCoordinateRight, visitedDuringTrace);
+
+  std::cout << "current location " << robotState.currentNode->getCoordinate().toString() << std::endl;
+  std::cout << "state " << robotState.toString() << std::endl;
+  std::cout << "left " << canLeftBeVisited << potentialCoordinateLeft.toString() << std::endl;
+  std::cout << "forward " << canForwardBeVisited << potentialCoordinateForward.toString() << std::endl;
+  std::cout << "right " << canRightBeVisited << potentialCoordinateRight.toString() << std::endl;
+  std::cout << "---" << std::endl;
+  return canLeftBeVisited || canForwardBeVisited || canRightBeVisited;
+}
+
 void MinerNavigator::traceLongestTileLink() {
   // clear so far so that the starting position becomes the current position
   while (!coordinatesTrail.empty()) {
     coordinatesTrail.pop();
   }
-  std::stack<Coordinate> turnStack;
+  coordinatesTrail.push(robotState.currentNode->getCoordinate());
+  std::vector<Coordinate> visitedDuringTrace;
 
   const auto crystalType = robotState.currentNode->getBlockType();
+  std::cout << static_cast<unsigned char>(crystalType) << std::endl;
   while (true) {
+    bool allCoordinatesBanned = !canMoveToAtLeastOneLocation(robotState, crystalType, visitedDuringTrace);
+    // Can't I backtrack here
+    while (allCoordinatesBanned) {
+      std::cout << "trail " << std::endl;
+      printStack(coordinatesTrail);
+      coordinatesTrail.pop(); // current node we're at, we need to pop it so that the previos node remains at the top of the stack
+      std::cout << "backtracking from " << robotState.currentNode->getCoordinate().toString()
+                << " to " << coordinatesTrail.top().toString();
+      goToCoordinate(coordinatesTrail.top());
+      coordinatesTrail.pop();
+      allCoordinatesBanned = !canMoveToAtLeastOneLocation(robotState, crystalType, visitedDuringTrace);
+    }
     if (robotState.surroundingTiles[LEFT_INDEX] == crystalType) {
-      goLeft();
-      turnStack.push(robotState.currentNode->getCoordinate()); //
-      continue;
+      const auto potentialCoordinate = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+        robotState.direction,
+        robotState.currentNode->getCoordinate(),
+        LEFT_INDEX);
+      if (!isCoordinateInVector(potentialCoordinate, visitedDuringTrace)) {
+        goLeft();
+        visitedDuringTrace.emplace_back(robotState.currentNode->getCoordinate());
+        continue;
+      }
     }
+
     if (robotState.surroundingTiles[FORWARD_INDEX] == crystalType) {
-      goForward();
-      continue;
+      const auto potentialCoordinate = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+        robotState.direction,
+        robotState.currentNode->getCoordinate(),
+        FORWARD_INDEX);
+      if (!isCoordinateInVector(potentialCoordinate, visitedDuringTrace)) {
+        goForward();
+        visitedDuringTrace.emplace_back(robotState.currentNode->getCoordinate());
+        continue;
+      }
     }
+
     if (robotState.surroundingTiles[RIGHT_INDEX] == crystalType) {
-      goRight();
-      turnStack.push(robotState.currentNode->getCoordinate()); //
-      continue;
+      const auto potentialCoordinate = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+        robotState.direction,
+        robotState.currentNode->getCoordinate(),
+        RIGHT_INDEX);
+      if (!isCoordinateInVector(potentialCoordinate, visitedDuringTrace)) {
+        goRight();
+        continue;
+      }
     }
 
-    // // backtrack until last turn
-    // while (robotState.currentNode->getCoordinate().x != turnStack.top().x
-    //       && robotState.currentNode->getCoordinate().y != turnStack.top().y
-    // ) {
-    //   std::cout << "pre" << std::endl;
-    //   printStack(coordinatesTrail);
-    //   coordinatesTrail.pop();
-    //   goToCoordinate(coordinatesTrail.top());
-    //   coordinatesTrail.pop();
-    //   std::cout << "post" << std::endl;
-    //   printStack(coordinatesTrail);
-    // }
-    // turnStack.pop();
-
-
-    // // go back to last turn
-    turnAround(); //
+    turnAround();
   }
 
 }
@@ -498,9 +586,10 @@ void MinerNavigator::turnAround() {
   auto result = moverCommunicator.sendTurnRightCommand();
   robotState.direction = toDirection(result->robot_position_response.robot_dir);
   robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
-  result = moverCommunicator.sendTurnRightCommand();
-  robotState.direction = toDirection(result->robot_position_response.robot_dir);
-  robotState.surroundingTiles = result->robot_position_response.surrounding_tiles;
+
+  auto result2 = moverCommunicator.sendTurnRightCommand();
+  robotState.direction = toDirection(result2->robot_position_response.robot_dir);
+  robotState.surroundingTiles = result2->robot_position_response.surrounding_tiles;
 }
 
 struct DirectionDistanceCoordinate {
