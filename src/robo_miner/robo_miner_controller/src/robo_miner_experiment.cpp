@@ -11,6 +11,7 @@
 #include "robo_miner_interfaces/msg/field_point.hpp"
 #include "robo_miner_controller/coordinate_remapper.h"
 #include "robo_miner_controller/longest_trail.h"
+#include "robo_miner_common/defines/RoboMinerTopics.h"
 
 robo_miner_interfaces::msg::FieldPoint coordinateToFieldPoint(const Coordinate& c) {
   robo_miner_interfaces::msg::FieldPoint fieldPoint;
@@ -33,11 +34,11 @@ int32_t run_experiment() {
   using ActivateMiningValidate = robo_miner_interfaces::srv::ActivateMiningValidate;
   std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("try_to_get_initial_conditions");
   // TODO the service names should be pulled as constants
-  auto initialPositionClient = node->create_client<QueryInitialRobotPosition>("query_initial_robot_position");
-  auto moveClient = node->create_client<RobotMove>("move_robot");
-  auto validateMapClient = node->create_client<FieldMapValidate>("field_map_validate");
-  auto miningValidateClient = node->create_client<ActivateMiningValidate>("activate_mining_validate");
-  auto validateLongestSequenceClient = node->create_client<LongestSequenceValidate>("longest_sequence_validate");
+  auto initialPositionClient = node->create_client<QueryInitialRobotPosition>(QUERY_INITIAL_ROBOT_POSITION_SERVICE);
+  auto moveClient = node->create_client<RobotMove>(ROBOT_MOVE_SERVICE);
+  auto validateMapClient = node->create_client<FieldMapValidate>(FIELD_MAP_VALIDATE_SERVICE);
+  auto miningValidateClient = node->create_client<ActivateMiningValidate>(ACTIVATE_MINING_VALIDATE_SERVICE);
+  auto validateLongestSequenceClient = node->create_client<LongestSequenceValidate>(LONGEST_SEQUENCE_VALIDATE_SERVICE);
 
   auto activateMiningValidateFn = [miningValidateClient, node]() {
     auto request = std::make_shared<ActivateMiningValidate::Request>();

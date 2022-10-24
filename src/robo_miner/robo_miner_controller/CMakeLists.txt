@@ -26,6 +26,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(robo_miner_interfaces REQUIRED)
+find_package(robo_miner_common REQUIRED)
 # find_package(robo_miner_common REQUIRED)
 
 # TODO
@@ -63,11 +64,11 @@ target_include_directories(robo_miner_controller PUBLIC
   $<INSTALL_INTERFACE:include>)
 
 # TODO
-# target_link_libraries(
-#   ${PROJECT_NAME}
-#   PUBLIC
-#     robo_miner_common::robo_miner_common
-# )
+target_link_libraries(
+    ${PROJECT_NAME}
+    PUBLIC
+        robo_miner_common::robo_miner_common
+)
 
 ament_target_dependencies(
     ${PROJECT_NAME}

@@ -91,7 +91,7 @@ private:
   void goToCoordinate(const Coordinate &coord);
   std::vector<Coordinate> getCoordinatesAroundMe();
   Coordinate getClosestLongestTileLinkToMe(std::vector<Coordinate> longestTileLinkCoordinates);
-  void traceLongestTileLink();
+  void traceLongestSequence();
   
 };
 #endif

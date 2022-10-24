@@ -386,7 +386,7 @@ void MinerNavigator::backtrackUntilUnstuck() {
         }
         
         activateMiningValidateFn();
-        traceLongestTileLink();
+        traceLongestSequence();
         throw std::invalid_argument("terminal condition reached");
       }
       auto result = moverCommunicator.sendTurnRightCommand();
@@ -451,34 +451,23 @@ bool canMoveToAtLeastOneLocation(
   auto canForwardBeVisited = robotState.surroundingTiles[FORWARD_INDEX] == targetCrystalType && !isCoordinateInVector(potentialCoordinateForward, visitedDuringTrace);
   auto canRightBeVisited = robotState.surroundingTiles[RIGHT_INDEX] == targetCrystalType && !isCoordinateInVector(potentialCoordinateRight, visitedDuringTrace);
 
-  std::cout << "current location " << robotState.currentNode->getCoordinate().toString() << std::endl;
-  std::cout << "state " << robotState.toString() << std::endl;
-  std::cout << "left " << canLeftBeVisited << potentialCoordinateLeft.toString() << std::endl;
-  std::cout << "forward " << canForwardBeVisited << potentialCoordinateForward.toString() << std::endl;
-  std::cout << "right " << canRightBeVisited << potentialCoordinateRight.toString() << std::endl;
-  std::cout << "---" << std::endl;
   return canLeftBeVisited || canForwardBeVisited || canRightBeVisited;
 }
 
-void MinerNavigator::traceLongestTileLink() {
-  // clear so far so that the starting position becomes the current position
+void MinerNavigator::traceLongestSequence() {
+  // clear visited coordinates thus far so we can backtrack just the longest sequence
   while (!coordinatesTrail.empty()) {
     coordinatesTrail.pop();
   }
   coordinatesTrail.push(robotState.currentNode->getCoordinate());
-  std::vector<Coordinate> visitedDuringTrace;
 
+  std::vector<Coordinate> visitedDuringTrace;
   const auto crystalType = robotState.currentNode->getBlockType();
   std::cout << static_cast<unsigned char>(crystalType) << std::endl;
   while (true) {
     bool allCoordinatesBanned = !canMoveToAtLeastOneLocation(robotState, crystalType, visitedDuringTrace);
-    // Can't I backtrack here
     while (allCoordinatesBanned) {
-      std::cout << "trail " << std::endl;
-      printStack(coordinatesTrail);
       coordinatesTrail.pop(); // current node we're at, we need to pop it so that the previos node remains at the top of the stack
-      std::cout << "backtracking from " << robotState.currentNode->getCoordinate().toString()
-                << " to " << coordinatesTrail.top().toString();
       goToCoordinate(coordinatesTrail.top());
       coordinatesTrail.pop();
       allCoordinatesBanned = !canMoveToAtLeastOneLocation(robotState, crystalType, visitedDuringTrace);
