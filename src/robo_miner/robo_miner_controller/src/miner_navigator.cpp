@@ -8,13 +8,6 @@
 #include "robo_miner_controller/shortest_path.h"
 #include "robo_miner_interfaces/msg/robot_position_response.hpp"
 
-// static void printStack(std::stack<Coordinate> coords) {
-//   while(!coords.empty()) {
-//     std::cout << coords.top().toString() << " ";
-//     coords.pop();
-//   }
-// }
-
 static bool isCoordinateInVector(const Coordinate& target, const std::vector<Coordinate>& coordinates) {
   for (const auto& c: coordinates) {
     if (c == target) {
@@ -34,15 +27,6 @@ namespace {
     constexpr auto CLOCKWISE_BEHIND_INDEX = 2;
     constexpr auto CLOCKWISE_LEFT_INDEX = 3;
 
-
-  template <class T>
-  void printVector(std::vector<T> toPrint, std::string name) {
-    std::cout << name << " ";
-    for (const auto& a : toPrint) {
-      std::cout << a.toString() << ", ";
-    }
-    std::cout << std::endl;
-  }
 }
 
 static RobotDirection toDirection(int8_t d) {
@@ -422,14 +406,6 @@ void MinerNavigator::backtrackUntilUnstuck() {
   }
 }
 
-static void printStack(std::stack<Coordinate> s) {
-  while (!s.empty()) {
-    std::cout << s.top().toString() << " ";
-    s.pop();
-  }
-  std::cout << std::endl;
-}
-
 bool canMoveToAtLeastOneLocation(
   const RobotState& robotState,
   unsigned char targetCrystalType,
@@ -463,7 +439,6 @@ void MinerNavigator::traceLongestSequence() {
 
   std::vector<Coordinate> visitedDuringTrace;
   const auto crystalType = robotState.currentNode->getBlockType();
-  std::cout << static_cast<unsigned char>(crystalType) << std::endl;
   while (true) {
     bool allCoordinatesBanned = !canMoveToAtLeastOneLocation(robotState, crystalType, visitedDuringTrace);
     while (allCoordinatesBanned) {

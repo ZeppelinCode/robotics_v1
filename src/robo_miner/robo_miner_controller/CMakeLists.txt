@@ -27,7 +27,6 @@ find_package(std_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(robo_miner_interfaces REQUIRED)
 find_package(robo_miner_common REQUIRED)
-# find_package(robo_miner_common REQUIRED)
 
 # TODO
 # uncomment the following section in order to fill in
@@ -41,8 +40,6 @@ set(_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_executable(
   ${PROJECT_NAME}
     ${_SRC_DIR}/main.cpp
-    # ${_INC_DIR}/robo_miner_controller_external_bridge.h
-    # ${_SRC_DIR}/robo_miner_controller_external_bridge.cpp
     ${_INC_DIR}/map_graph.h
     ${_SRC_DIR}/map_graph.cpp
     ${_INC_DIR}/robo_miner_experiment.h
@@ -53,8 +50,8 @@ add_executable(
     ${_SRC_DIR}/miner_navigator.cpp
     ${_INC_DIR}/coordinate_remapper.h
     ${_SRC_DIR}/coordinate_remapper.cpp
-    ${_INC_DIR}/longest_trail.h
-    ${_SRC_DIR}/longest_trail.cpp
+    # ${_INC_DIR}/longest_trail.h
+    # ${_SRC_DIR}/longest_trail.cpp
     ${_INC_DIR}/shortest_path.h
     ${_SRC_DIR}/shortest_path.cpp
 )

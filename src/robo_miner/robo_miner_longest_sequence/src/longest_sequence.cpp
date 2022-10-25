@@ -1,5 +1,4 @@
-#include "robo_miner_controller/longest_trail.h"
-#include <iostream>
+#include "robo_miner_longest_sequence/longest_sequence.h"
 
 bool doesVecContainCoordinate(const std::vector<Coordinate>& data, Coordinate& target) {
     for (auto c : data) {
@@ -53,24 +52,22 @@ void longestPathAtCoordinate(
 
 // TODO this could be done as a 2d wrapper class with an overloaded [] operator but for the 
 // sake of time, an inefficient approach of copying data is used
-namespace longest_trail {
-    std::vector<Coordinate> getLongestTrail(const MapStructure& mapStructure) {
-        std::vector<std::vector<unsigned char>> grid2d = mapStructure.asMatrix();
+std::vector<Coordinate> getLongestSequence(const MapStructure& mapStructure) {
+    std::vector<std::vector<unsigned char>> grid2d = mapStructure.asMatrix();
 
-        std::vector<Coordinate> longestConnected{};
-        std::vector<Coordinate> totalVisited{};
-        std::vector<Coordinate> currentAcc{};
-        for (size_t i = 0; i < grid2d.size(); i++) {
-            for (size_t j = 0; j < grid2d[0].size(); j++) {
-                currentAcc = std::vector<Coordinate>{};
-                longestPathAtCoordinate(grid2d, Coordinate(j, i), currentAcc, totalVisited);
+    std::vector<Coordinate> longestConnected{};
+    std::vector<Coordinate> totalVisited{};
+    std::vector<Coordinate> currentAcc{};
+    for (size_t i = 0; i < grid2d.size(); i++) {
+        for (size_t j = 0; j < grid2d[0].size(); j++) {
+            currentAcc = std::vector<Coordinate>{};
+            longestPathAtCoordinate(grid2d, Coordinate(j, i), currentAcc, totalVisited);
 
-                if (currentAcc.size() > longestConnected.size()) {
-                    longestConnected = currentAcc;
-                }
+            if (currentAcc.size() > longestConnected.size()) {
+                longestConnected = currentAcc;
             }
         }
-
-        return longestConnected;
     }
+
+    return longestConnected;
 }

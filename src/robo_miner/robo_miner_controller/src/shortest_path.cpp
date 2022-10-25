@@ -1,5 +1,4 @@
 #include "robo_miner_controller/shortest_path.h"
-#include <iostream>
 
 static bool isCoordinateInVector(const Coordinate& target, std::vector<Coordinate>& coordinates) {
   for (const auto& c: coordinates) {
@@ -40,7 +39,6 @@ static void dfs(
 
     currentPath.push_back(from);
     if (from == to) {
-        std::cout << "7" << std::endl;
         if (currentPath.size() < bestPath.size() || bestPath.empty()) {
             *anyPathFound = true;
             bestPath = std::vector<Coordinate>(currentPath);

@@ -5,7 +5,8 @@ import os.path
 
 def generate_launch_description():
      ld = LaunchDescription()
-     node_name = 'robo_miner_controller'
+     controller_node_name = 'robo_miner_controller'
+     longest_sequence_node_name = 'robo_miner_longest_sequence'
     #  config = os.path.join(
     #       get_package_share_directory(node_name),
     #       'config',
@@ -13,16 +14,27 @@ def generate_launch_description():
     #  )
 
     #  print('[launch.py] - loading node ({0}) params from: ({1})'.format(node_name, config))
-     print('[launch.py] - loading node ({0}) params from: ({1})'.format(node_name, "not used at the moment"))
+     print('[launch.py] - loading node ({0}) params from: ({1})'.format(controller_node_name, "not used at the moment"))
+     print('[launch.py] - loading node ({0}) params from: ({1})'.format(longest_sequence_node_name, "not used at the moment"))
 
-     node = Node(
-          package = node_name,
-          executable = node_name,
+     controller_node = Node(
+          package = controller_node_name,
+          executable = controller_node_name,
           output = 'screen',
           emulate_tty = True,
           parameters = [] # not used at the moment
         #   parameters = [config]
      )
 
-     ld.add_action(node)
+     longest_sequence_node = Node(
+          package = longest_sequence_node_name,
+          executable = longest_sequence_node_name,
+          output = 'screen',
+          emulate_tty = True,
+          parameters = [] # not used at the moment
+        #   parameters = [config]
+     )
+
+     ld.add_action(longest_sequence_node)
+     ld.add_action(controller_node)
      return ld

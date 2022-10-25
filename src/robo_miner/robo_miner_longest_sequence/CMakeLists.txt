@@ -34,7 +34,11 @@ endif()
 
 add_executable(
   ${PROJECT_NAME}
-    ${_SRC_DIR}/main.cpp)
+    ${_SRC_DIR}/main.cpp
+    ${_INC_DIR}/longest_sequence.h
+    ${_SRC_DIR}/longest_sequence.cpp
+)
+
 target_include_directories(robo_miner_longest_sequence PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -42,11 +46,6 @@ target_include_directories(robo_miner_longest_sequence PUBLIC
 install(TARGETS robo_miner_longest_sequence
   DESTINATION lib/${PROJECT_NAME})
 
-target_link_libraries(
-  ${PROJECT_NAME}
-  PUBLIC
-      robo_miner_common::robo_miner_common
-)
 
 ament_target_dependencies(
     ${PROJECT_NAME}
@@ -55,6 +54,12 @@ ament_target_dependencies(
         ament_index_cpp
         robo_miner_interfaces
         std_msgs
+)
+
+target_link_libraries(
+    ${PROJECT_NAME}
+    PUBLIC
+        robo_miner_common::robo_miner_common
 )
 
 if(BUILD_TESTING)
