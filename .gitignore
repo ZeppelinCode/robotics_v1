@@ -4,6 +4,7 @@ log
 src/.vscode
 src/robo_collector/.vscode
 src/robo_miner/.vscode
+src/robo_cleaner/.vscode
 src/robo_cllector/install
 src/robo_collector/log
 src/robo_collector/robo_collector_common/build
