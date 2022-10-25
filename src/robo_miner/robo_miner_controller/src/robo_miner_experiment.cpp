@@ -11,8 +11,10 @@
 #include "robo_miner_interfaces/srv/longest_sequence_calculate.hpp"
 #include "robo_miner_interfaces/msg/field_point.hpp"
 #include "robo_miner_interfaces/msg/coordinate.hpp"
+#include "robo_miner_interfaces/msg/user_authenticate.hpp"
 #include "robo_miner_interfaces/msg/u_int8_multi_array.hpp"
 #include "robo_miner_controller/coordinate_remapper.h"
+#include "robo_miner_controller/param_provider.h"
 #include "robo_miner_common/defines/RoboMinerTopics.h"
 
 robo_miner_interfaces::msg::FieldPoint coordinateToFieldPoint(const Coordinate& c) {
@@ -51,11 +53,29 @@ std::vector<Coordinate> getLongestSequence(
   return retval;
 }
 
+void publishUserAuthenticate(
+  std::shared_ptr<rclcpp::Node> node,
+  std::shared_ptr<rclcpp::Publisher<robo_miner_interfaces::msg::UserAuthenticate>> userAuthenticatePublisher
+) {
+  std::cout << "publishing user authenticate" << std::endl;
+  auto paramProvider = ParamProvider(node);
+  // Didn't work, rolling back to hardcoding
+  auto userParams = paramProvider.getUserParams();
+  std::cout << "got user params " << userParams.user << " " << userParams.repository << " " << userParams.commitSha;
+  robo_miner_interfaces::msg::UserAuthenticate userAuthenticate;
+  userAuthenticate.repository = "https://github.com/ZeppelinCode/robotics_v1"; //userParams.repository;
+  userAuthenticate.user = "Kristian Sonev"; // userParams.user;
+  userAuthenticate.commit_sha = userParams.commitSha;
+  userAuthenticatePublisher->publish(userAuthenticate);
+}
+
 int32_t run_experiment() {
   using FieldMapValidate = robo_miner_interfaces::srv::FieldMapValidate;
   using LongestSequenceValidate = robo_miner_interfaces::srv::LongestSequenceValidate;
   using ActivateMiningValidate = robo_miner_interfaces::srv::ActivateMiningValidate;
   using LongestSequenceCalculate = robo_miner_interfaces::srv::LongestSequenceCalculate;
+  using UserAuthenticate = robo_miner_interfaces::msg::UserAuthenticate;
+
   std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("robo_miner_controller_node");
   auto initialPositionClient = node->create_client<QueryInitialRobotPosition>(QUERY_INITIAL_ROBOT_POSITION_SERVICE);
   auto moveClient = node->create_client<RobotMove>(ROBOT_MOVE_SERVICE);
@@ -63,6 +83,10 @@ int32_t run_experiment() {
   auto miningValidateClient = node->create_client<ActivateMiningValidate>(ACTIVATE_MINING_VALIDATE_SERVICE);
   auto validateLongestSequenceClient = node->create_client<LongestSequenceValidate>(LONGEST_SEQUENCE_VALIDATE_SERVICE);
   auto getLongestSequenceClient = node->create_client<LongestSequenceCalculate>(LONGEST_SEQUENCE_CALCULATE_SERVICE);
+
+  constexpr size_t queueSize = 10;
+  const rclcpp::QoS qos(queueSize);
+  auto userAuthenticatePublisher = node->create_publisher<UserAuthenticate>(USER_AUTHENTICATE_TOPIC, qos);
 
   auto activateMiningValidateFn = [miningValidateClient, node]() {
     auto request = std::make_shared<ActivateMiningValidate::Request>();
@@ -72,10 +96,11 @@ int32_t run_experiment() {
     }
     const auto response = result.get();
     std::cout << "got response for activate mining validate: " << response->success << " with failure reason" << response->error_reason << std::endl;
-
   };
 
-  auto validateMapFn = [validateMapClient, validateLongestSequenceClient, getLongestSequenceClient, node](const MapStructure& mapStructure) {
+  auto validateMapFn = [validateMapClient, validateLongestSequenceClient, 
+    getLongestSequenceClient, userAuthenticatePublisher, node](const MapStructure& mapStructure) {
+
     auto validateMapRequest = std::make_shared<FieldMapValidate::Request>();
     validateMapRequest->field_map.rows = mapStructure.rows;
     validateMapRequest->field_map.cols = mapStructure.cols;
@@ -102,6 +127,8 @@ int32_t run_experiment() {
     }
     const auto sequenceResponse = seuqenceResult.get();
     std::cout << "got validate longest sequence response: " << sequenceResponse->success << " with failure reason" << response->error_reason << std::endl;
+
+    publishUserAuthenticate(node, userAuthenticatePublisher);
     return longestConnectedCoordinates;
   };
 

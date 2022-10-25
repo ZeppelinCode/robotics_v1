@@ -50,8 +50,8 @@ add_executable(
     ${_SRC_DIR}/miner_navigator.cpp
     ${_INC_DIR}/coordinate_remapper.h
     ${_SRC_DIR}/coordinate_remapper.cpp
-    # ${_INC_DIR}/longest_trail.h
-    # ${_SRC_DIR}/longest_trail.cpp
+    ${_INC_DIR}/param_provider.h
+    ${_SRC_DIR}/param_provider.cpp
     ${_INC_DIR}/shortest_path.h
     ${_SRC_DIR}/shortest_path.cpp
 )
