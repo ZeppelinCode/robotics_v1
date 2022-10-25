@@ -65,7 +65,7 @@ void publishUserAuthenticate(
   robo_miner_interfaces::msg::UserAuthenticate userAuthenticate;
   userAuthenticate.repository = "https://github.com/ZeppelinCode/robotics_v1"; //userParams.repository;
   userAuthenticate.user = "Kristian Sonev"; // userParams.user;
-  userAuthenticate.commit_sha = userParams.commitSha;
+  userAuthenticate.commit_sha = "5bbbe1ed7e6f1fc9d11b01a521eacebfe78e908f"; // userParams.commitSha;
   userAuthenticatePublisher->publish(userAuthenticate);
 }
 
