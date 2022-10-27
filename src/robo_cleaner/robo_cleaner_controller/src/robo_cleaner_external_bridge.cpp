@@ -1,5 +1,6 @@
 #include <chrono>
 #include <iostream>
+#include <random>
 #include "robo_cleaner_controller/robo_cleaner_external_bridge.h"
 #include "robo_cleaner_common/defines/RoboCleanerTopics.h"
 #include "robo_cleaner_interfaces/msg/robot_move_type.hpp"
@@ -25,15 +26,54 @@ static void waitForClientToBecomeReachable(const std::shared_ptr<T>& service) {
     }
 }
 
+static Coordinate calculateNewCoordianteBasedOnDirection(RobotDirection currentDirection, Coordinate oldCoordinate) {
+  switch (currentDirection) {
+  case RobotDirection::LEFT:
+    return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+  case RobotDirection::UP:
+    return Coordinate(oldCoordinate.x, oldCoordinate.y -1);
+  case RobotDirection::RIGHT:
+    return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+  case RobotDirection::DOWN:
+    return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+  default:
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  }
+}
+
 RoboCleanerExternalBridge::RoboCleanerExternalBridge() : Node("CleanerExternalBridge") {}
 
 void RoboCleanerExternalBridge::init() {
+    using namespace std::chrono_literals;
     initialRobotStateClient = create_client<QueryInitialRobotState>(QUERY_INITIAL_ROBOT_STATE_SERVICE);
     waitForClientToBecomeReachable(initialRobotStateClient);
 
     moveActionClient = rclcpp_action::create_client<RobotMove>(this, ROBOT_MOVE_ACTION);
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
-    std::cout << "move action client initialized" << std::endl;
+
+    timer = create_wall_timer(500ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
+    queryInitialState();
+}
+
+// TODO READ ALL OF THESE TO GET A CLUE OF WHAT TO DO
+// 1. TODO calculate potential coordinates around you and check which ones haven't been visited (keep these in a list, you'll need them later on in 3.)
+// 2.TODO once your battery is at a certain threshold [can be a function for now (70% remaining), will implement later],
+// do a shortest path and retutrn to the charging station and chanrge to full
+// 3. then do a shortest path to closest undiscovered coordinate and carry on 1. fro mthere
+// try not to issue orders to go to coordinates you know are collisions
+void RoboCleanerExternalBridge::timerCallback() {
+    std::lock_guard<std::recursive_mutex> l(mLock);
+    if (isActionRunning) {
+        return;
+    }
+
+    std::random_device rd;     // Only used once to initialise (seed) engine
+    std::mt19937 rng(rd());    // Random-number engine used (Mersenne-Twister in this case)
+    std::uniform_int_distribution<int> uni(0,2); // Guaranteed unbiased
+
+    auto random_integer = uni(rng);
+
+    issueMoveOrder(random_integer);
 }
 
 void RoboCleanerExternalBridge::queryInitialState() {
@@ -49,14 +89,17 @@ void RoboCleanerExternalBridge::queryInitialState() {
     const std::shared_ptr<QueryInitialRobotState::Response> responseData = result.get();
     const auto batteryStatus = responseData->initial_robot_state.battery_status;
     const auto direction = responseData->initial_robot_state.robot_dir;
-    const auto tileDirt = responseData->initial_robot_state.robot_tile;
+    const auto tileDirtiness = responseData->initial_robot_state.robot_tile;
+    robotState.direction = robot_state::numberToDirection(direction);
+    robotState.movesLeft = batteryStatus.moves_left;
 
-    std::cout << "initial state battery status " << batteryStatus.moves_left
-                << " direction " << direction
-                << " tile " << static_cast<int>(tileDirt) << std::endl;;
+    auto newNode = std::make_shared<GraphNode>(GraphNode(Coordinate(0, 0), tileDirtiness));
+    robotState.currentNode = newNode;
+    map.addNode(newNode);
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
+    std::lock_guard<std::recursive_mutex> l(mLock);
     auto sendGoalOptions = rclcpp_action::Client<RobotMove>::SendGoalOptions();
     sendGoalOptions.goal_response_callback =
       std::bind(&RoboCleanerExternalBridge::moveGoalResponseCallback, this, _1);
@@ -75,6 +118,7 @@ void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
 }
 
 void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future) {
+    std::lock_guard<std::recursive_mutex> l(mLock);
     std::cout << "response callback" << std::endl;
     auto goal_handle = future.get();
     if (!goal_handle) {
@@ -82,6 +126,7 @@ void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<Goal
       return;
     }
     RCLCPP_INFO(this->get_logger(), "Move goal accepted by server, waiting for result");
+    isActionRunning = true;
 }
 
 /**
@@ -96,33 +141,53 @@ void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<Goal
  * moveActionClient->async_cancel_all_goals
 */
 
+bool isApproachingCollision(uint8_t fieldMarker) {
+    return fieldMarker == '#' || fieldMarker == 'x' || fieldMarker == 'X';
+} 
+
 void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
     [[maybe_unused]] const GoalHandleRobotMove::SharedPtr, 
     const std::shared_ptr<const RobotMove::Feedback> feedback
 ) {
+    std::lock_guard<std::recursive_mutex> l(mLock);
+    if (isApproachingCollision(feedback->approaching_field_marker)) {
+        moveActionClient->async_cancel_all_goals();
+        const auto newCoordinate = calculateNewCoordianteBasedOnDirection(robotState.direction, robotState.currentNode->getCoordinate());
+        auto newNode = std::make_shared<GraphNode>(newCoordinate, 'X');
+        map.addNode(newNode);
+        std::cout << "cancelling goal due to approaching collision " << feedback->approaching_field_marker << std::endl;
+        std::cout << map.toString() << std::endl;
+        return;
+    }
     std::cout << "feedback tick" << std::endl;
     std::cout << "feedback approaching field marker " << feedback->approaching_field_marker 
             << " percent " << feedback->progress_percent << std::endl;
 }
 
 void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result) {
+    std::lock_guard<std::recursive_mutex> l(mLock);
     std::cout << "result" << std::endl;
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
+        isActionRunning = false;
         break;
     case rclcpp_action::ResultCode::ABORTED:
+        isActionRunning = false;
         std::cerr << "Goal was aborted" << std::endl;
         return;
     case rclcpp_action::ResultCode::CANCELED:
+        isActionRunning = false;
         std::cerr << "Goal was aborted" << std::endl;
         return;
     default:
+        isActionRunning = false;
         std::cerr << "Unknown result code: "
                 << static_cast<int32_t>(result.code) << std::endl;
         return;
     }
 
-    const uint8_t tileValueAfterMoveCompletion  = result.result->processed_field_marker;
+
+    // const uint8_t tileValueAfterMoveCompletion  = result.result->processed_field_marker;
     std::cout << "result result.processedFieldMarker " << result.result->processed_field_marker
         << "result result.success " << result.result->success
         << std::endl;

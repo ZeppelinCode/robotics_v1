@@ -37,6 +37,12 @@ add_executable(
     ${_SRC_DIR}/main.cpp
     ${_INC_DIR}/robo_cleaner_external_bridge.h
     ${_SRC_DIR}/robo_cleaner_external_bridge.cpp
+    ${_INC_DIR}/map_graph.h
+    ${_SRC_DIR}/map_graph.cpp
+    ${_INC_DIR}/shortest_path.h
+    ${_SRC_DIR}/shortest_path.cpp
+    ${_INC_DIR}/robot_state.h
+    ${_SRC_DIR}/robot_state.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
