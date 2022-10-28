@@ -36,6 +36,7 @@ private:
   std::recursive_mutex mLock{};
   std::mutex batteryLock{};
   rclcpp::Node::SharedPtr _sharedReferenceToSelf;
+  rclcpp::CallbackGroup::SharedPtr batteryStatusCallbackGroup;
 
   void moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future);
   void moveGoalFeedbackCallback(GoalHandleRobotMove::SharedPtr, const std::shared_ptr<const RobotMove::Feedback> feedback);

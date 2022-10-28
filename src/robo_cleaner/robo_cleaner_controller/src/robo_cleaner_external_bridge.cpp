@@ -134,12 +134,16 @@ std::vector<Coordinate> RoboCleanerExternalBridge::getClockwiseCoordinatesAround
 RoboCleanerExternalBridge::RoboCleanerExternalBridge() : Node("CleanerExternalBridge") {}
 
 void RoboCleanerExternalBridge::init() {
-    _sharedReferenceToSelf = shared_from_this();
     using namespace std::chrono_literals;
+    _sharedReferenceToSelf = shared_from_this();
+
+    batteryStatusCallbackGroup = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     initialRobotStateClient = create_client<QueryInitialRobotState>(QUERY_INITIAL_ROBOT_STATE_SERVICE);
     waitForClientToBecomeReachable(initialRobotStateClient);
 
-    queryBatteryStatusClient = create_client<QueryBatteryStatus>(QUERY_BATTERY_STATUS_SERVICE);
+    queryBatteryStatusClient = create_client<QueryBatteryStatus>(QUERY_BATTERY_STATUS_SERVICE, 
+      rmw_qos_profile_services_default,
+      batteryStatusCallbackGroup);
     waitForClientToBecomeReachable(queryBatteryStatusClient);
 
     chargeBatteryClient = create_client<ChargeBattery>(CHARGE_BATTERY_SERVICE);
@@ -164,7 +168,6 @@ void RoboCleanerExternalBridge::timerCallback() {
     if (isActionRunning) {
         return;
     }
-    updateBatteryStatus();
 
     std::random_device rd;     // Only used once to initialise (seed) engine
     std::mt19937 rng(rd());    // Random-number engine used (Mersenne-Twister in this case)
@@ -197,8 +200,6 @@ void RoboCleanerExternalBridge::queryInitialState() {
     auto newNode = std::make_shared<GraphNode>(GraphNode(Coordinate(0, 0), tileDirtiness));
     robotState.currentNode = newNode;
     map.addNode(newNode);
-
-    updateBatteryStatus();
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
@@ -289,6 +290,7 @@ void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove
         return;
     }
 
+    updateBatteryStatus();
     // const uint8_t tileValueAfterMoveCompletion  = result.result->processed_field_marker;
     std::cout << "result result.processedFieldMarker " << result.result->processed_field_marker
         << "result result.success " << result.result->success
@@ -296,16 +298,28 @@ void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove
 }
 
 void RoboCleanerExternalBridge::updateBatteryStatus() {
-    std::thread t1{[this]() {
-      std::lock_guard<std::mutex>(this->batteryLock);
-      auto request = std::make_shared<QueryBatteryStatus::Request>();
-      auto response = queryBatteryStatusClient->async_send_request(request);
+  // std::thread t1{[this]() {
+  //   // std::lock_guard<std::mutex>(this->batteryLock);
+  //   auto request = std::make_shared<QueryBatteryStatus::Request>();
+  //   auto response = this->queryBatteryStatusClient->async_send_request(request);
 
-      const auto result = response.get();
-      this->robotState.movesLeft = result->battery_status.moves_left;
-      std::cout << "moves left " << this->robotState.movesLeft << std::endl;
-    }};
-    t1.detach();
+  //   const auto result = response.get();
+  //   this->robotState.movesLeft = result->battery_status.moves_left;
+  //   std::cout << "moves left " << this->robotState.movesLeft << std::endl;
+  // }};
+  // t1.detach();
+
+  std::lock_guard<std::mutex>(this->batteryLock);
+  std::cout << "pre update" << std::endl;
+  auto request = std::make_shared<QueryBatteryStatus::Request>();
+  std::cout << "1" << std::endl;
+  auto response = this->queryBatteryStatusClient->async_send_request(request);
+
+  std::cout << "2" << std::endl;
+  const auto result = response.get();
+  std::cout << "3" << std::endl;
+  this->robotState.movesLeft = result->battery_status.moves_left;
+  std::cout << "moves left " << this->robotState.movesLeft << std::endl;
 }
 
 int32_t RoboCleanerExternalBridge::getMovesLeft() {

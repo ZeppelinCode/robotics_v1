@@ -27,6 +27,9 @@ int main(int argc, char ** argv)
 
   roboCleanerExternalBridge->init();
 
+  rclcpp::executors::MultiThreadedExecutor executor;
+  executor.add_node(roboCleanerExternalBridge);
+  executor.spin();
   rclcpp::spin(roboCleanerExternalBridge);
   std::cout << "shutting down for some reason" << std::endl;
   rclcpp::shutdown();
