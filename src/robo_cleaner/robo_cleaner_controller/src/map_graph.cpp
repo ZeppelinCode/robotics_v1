@@ -53,6 +53,7 @@ void MapGraph::addNode(std::shared_ptr<GraphNode> newNode) {
     auto possiblyExistingNode = getNodeAtCoordinate(newNode->getCoordinate());
     if (possiblyExistingNode) {
         possiblyExistingNode->get()->setBlockType(newNode->getBlockType());
+        return;
     }
     mNodes.emplace_back(newNode);
 }

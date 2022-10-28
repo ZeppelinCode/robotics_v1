@@ -26,6 +26,7 @@ int main(int argc, char ** argv)
   // }};
 
   roboCleanerExternalBridge->init();
+  roboCleanerExternalBridge->clean();
 
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(roboCleanerExternalBridge);

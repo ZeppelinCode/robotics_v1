@@ -13,7 +13,7 @@ enum class RobotDirection : uint8_t {
 
 
 enum class StateMachine : uint8_t {
-  IDLE, TURNING_LEFT, TURNED_LEFT, TURNING_RIGHT, TURNED_RIGHT 
+  IDLE, GOING_FORWARD, TURNING_LEFT, TURNED_LEFT_GOING_FORWARD, TURNING_RIGHT, TURNED_RIGHT_GOING_FORWARD
 };
 
 namespace robot_state {
@@ -28,7 +28,8 @@ public:
   int32_t movesLeft = 0;
   RobotDirection direction = RobotDirection::UNKNOWN;
   std::shared_ptr<GraphNode> currentNode = nullptr;
-  StateMachine state = StateMachine::IDLE;
+  StateMachine action = StateMachine::IDLE;
+  std::string toString();
 };
 
 #endif

@@ -23,6 +23,7 @@ public:
 
   RoboCleanerExternalBridge();
   void init();
+  void clean();
   void issueMoveOrder(int8_t moveType);
 private:
   std::shared_ptr<rclcpp::Client<QueryInitialRobotState>> initialRobotStateClient;
@@ -33,7 +34,7 @@ private:
   RobotState robotState;
   rclcpp::TimerBase::SharedPtr timer;
   std::atomic<bool> isActionRunning = false;
-  std::recursive_mutex mLock{};
+  std::recursive_mutex actionLock{};
   std::mutex batteryLock{};
   rclcpp::Node::SharedPtr _sharedReferenceToSelf;
   rclcpp::CallbackGroup::SharedPtr batteryStatusCallbackGroup;
@@ -46,5 +47,8 @@ private:
   void updateBatteryStatus();
   int32_t getMovesLeft();
   std::vector<Coordinate> getClockwiseCoordinatesAroundMe();
+  void goLeft();
+  void goRight();
+  void goForward();
 };
 #endif

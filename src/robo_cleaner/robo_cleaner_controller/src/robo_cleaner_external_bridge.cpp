@@ -39,6 +39,45 @@ static void waitForClientToBecomeReachable(const std::shared_ptr<T>& service) {
     }
 }
 
+static RobotDirection calculateDirectionBasedOnCurrentDirectionAndTurnCommand(RobotDirection currentDirection, StateMachine turnCommand) {
+  if (turnCommand == StateMachine::TURNING_LEFT) {
+    switch (currentDirection)
+    {
+    case RobotDirection::LEFT:
+      return RobotDirection::DOWN;
+    case RobotDirection::UP:
+      return RobotDirection::LEFT;
+    case RobotDirection::DOWN:
+      return RobotDirection::RIGHT;
+    case RobotDirection::RIGHT:
+      return RobotDirection::UP;
+    case RobotDirection::UNKNOWN:
+    default:
+      throw std::runtime_error("unknown direction so no idea where we're turning to (TURNING_LEFT)");
+      break;
+    }
+  }
+  if (turnCommand == StateMachine::TURNING_RIGHT) {
+    switch (currentDirection)
+    {
+    case RobotDirection::LEFT:
+      return RobotDirection::UP;
+    case RobotDirection::UP:
+      return RobotDirection::RIGHT;
+    case RobotDirection::DOWN:
+      return RobotDirection::LEFT;
+    case RobotDirection::RIGHT:
+      return RobotDirection::DOWN;
+    case RobotDirection::UNKNOWN:
+    default:
+      throw std::runtime_error("unknown direction so no idea where we're turning to (TURNING_RIGHT)");
+      break;
+    }
+  }
+  return RobotDirection::UNKNOWN;
+  // throw std::runtime_error("unknown direction so no idea where we're turning to (???)");
+}
+
 static Coordinate calculateNewCoordianteBasedOnDirection(RobotDirection currentDirection, Coordinate oldCoordinate) {
   switch (currentDirection) {
   case RobotDirection::LEFT:
@@ -141,6 +180,7 @@ void RoboCleanerExternalBridge::init() {
     initialRobotStateClient = create_client<QueryInitialRobotState>(QUERY_INITIAL_ROBOT_STATE_SERVICE);
     waitForClientToBecomeReachable(initialRobotStateClient);
 
+    queryBatteryStatusClient = create_client<QueryBatteryStatus>(QUERY_BATTERY_STATUS_SERVICE);
     queryBatteryStatusClient = create_client<QueryBatteryStatus>(QUERY_BATTERY_STATUS_SERVICE, 
       rmw_qos_profile_services_default,
       batteryStatusCallbackGroup);
@@ -152,8 +192,11 @@ void RoboCleanerExternalBridge::init() {
     moveActionClient = rclcpp_action::create_client<RobotMove>(this, ROBOT_MOVE_ACTION);
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
 
-    timer = create_wall_timer(500ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
+}
+
+void RoboCleanerExternalBridge::clean() {
     queryInitialState();
+    timer = create_wall_timer(200ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
 }
 
 // TODO READ ALL OF THESE TO GET A CLUE OF WHAT TO DO
@@ -164,18 +207,34 @@ void RoboCleanerExternalBridge::init() {
 // TODO try not to issue orders to go to coordinates you know are collisions
 // TODO maybe remove the mutex?
 void RoboCleanerExternalBridge::timerCallback() {
-    std::lock_guard<std::recursive_mutex> l(mLock);
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     if (isActionRunning) {
-        return;
+      std::cout << "----- [NO] timer action running" << std::endl;
+      return;
     }
+    waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
+    std::cout << "tick map" << std::endl;
+    std::cout << map.toString() << std::endl;
+    std::cout << "tick state " << std::endl;
+    std::cout << robotState.toString() << std::endl;
 
-    std::random_device rd;     // Only used once to initialise (seed) engine
-    std::mt19937 rng(rd());    // Random-number engine used (Mersenne-Twister in this case)
-    std::uniform_int_distribution<int> uni(0,2); // Guaranteed unbiased
-
-    auto random_integer = uni(rng);
-
-    issueMoveOrder(random_integer);
+    switch (robotState.action)
+    {
+    case StateMachine::IDLE:
+      std::cout << "idle so turning right from start" << std::endl;
+      goRight();
+      break;
+    case StateMachine::TURNED_RIGHT_GOING_FORWARD:
+      std::cout << "turned right, so we need to go forward" << std::endl;
+      issueMoveOrder(GO_FORWARD);
+      break;
+    case StateMachine::TURNED_LEFT_GOING_FORWARD:
+      std::cout << "turned left, so we need to go forward" << std::endl;
+      issueMoveOrder(GO_FORWARD);
+      break;
+    default:
+      break;
+    }
 }
 
 void RoboCleanerExternalBridge::queryInitialState() {
@@ -203,7 +262,10 @@ void RoboCleanerExternalBridge::queryInitialState() {
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
-    std::lock_guard<std::recursive_mutex> l(mLock);
+    std::lock_guard<std::recursive_mutex> l{actionLock};
+    if (isActionRunning) {
+      return;
+    }
     auto sendGoalOptions = rclcpp_action::Client<RobotMove>::SendGoalOptions();
     sendGoalOptions.goal_response_callback =
       std::bind(&RoboCleanerExternalBridge::moveGoalResponseCallback, this, _1);
@@ -216,13 +278,17 @@ void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
     robo_cleaner_interfaces::msg::RobotMoveType robotMoveType;
     robotMoveType.move_type = moveType;
     goal_msg.robot_move_type = robotMoveType;
-    std::cout << "issuing move order" << std::endl;
+    // if (!isActionRunning) {
+    std::cout << "issuing move order " << moveType << std::endl;
     moveActionClient->async_send_goal(goal_msg, sendGoalOptions);
-    std::cout << "/async move order issued" << std::endl;
+    std::cout << "/async move order issued " << moveType << std::endl;
+    // } else {
+    //   std::cout << "----- [NO] can't issue " << moveType << std::endl;
+    // }
 }
 
 void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future) {
-    std::lock_guard<std::recursive_mutex> l(mLock);
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     std::cout << "response callback" << std::endl;
     auto goal_handle = future.get();
     if (!goal_handle) {
@@ -245,6 +311,7 @@ void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<Goal
  * moveActionClient->async_cancel_all_goals
 */
 
+
 bool isApproachingCollision(uint8_t fieldMarker) {
     return fieldMarker == '#' || fieldMarker == 'x' || fieldMarker == 'X';
 } 
@@ -253,23 +320,26 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
     [[maybe_unused]] const GoalHandleRobotMove::SharedPtr, 
     const std::shared_ptr<const RobotMove::Feedback> feedback
 ) {
-    std::lock_guard<std::recursive_mutex> l(mLock);
+    // std::lock_guard<std::recursive_mutex> l{actionLock};
+    actionLock.lock();
     if (isApproachingCollision(feedback->approaching_field_marker)) {
-        moveActionClient->async_cancel_all_goals();
-        const auto newCoordinate = calculateNewCoordianteBasedOnDirection(robotState.direction, robotState.currentNode->getCoordinate());
-        auto newNode = std::make_shared<GraphNode>(newCoordinate, 'X');
-        map.addNode(newNode);
-        std::cout << "cancelling goal due to approaching collision " << feedback->approaching_field_marker << std::endl;
-        std::cout << map.toString() << std::endl;
-        return;
+      moveActionClient->async_cancel_all_goals();
+      moveActionClient->async_cancel_all_goals([this](std::shared_ptr<action_msgs::srv::CancelGoal::Response> response) {
+        this->isActionRunning = false;
+        actionLock.unlock();
+      });
+      const auto newCoordinate = calculateNewCoordianteBasedOnDirection(robotState.direction, robotState.currentNode->getCoordinate());
+      auto newNode = std::make_shared<GraphNode>(newCoordinate, 'X');
+      map.addNode(newNode);
+      std::cout << "cancelling goal due to approaching collision " << feedback->approaching_field_marker << std::endl;
+      std::cout << map.toString() << std::endl;
+      return;
     }
-    // std::cout << "feedback tick" << std::endl;
-    // std::cout << "feedback approaching field marker " << feedback->approaching_field_marker 
-    //         << " percent " << feedback->progress_percent << std::endl;
+    actionLock.unlock();
 }
 
 void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result) {
-    std::lock_guard<std::recursive_mutex> l(mLock);
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     std::cout << "result" << std::endl;
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
@@ -291,35 +361,62 @@ void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove
     }
 
     updateBatteryStatus();
-    // const uint8_t tileValueAfterMoveCompletion  = result.result->processed_field_marker;
-    std::cout << "result result.processedFieldMarker " << result.result->processed_field_marker
-        << "result result.success " << result.result->success
-        << std::endl;
+    switch (robotState.action)
+    {
+    case StateMachine::TURNING_RIGHT:
+      robotState.direction = calculateDirectionBasedOnCurrentDirectionAndTurnCommand(robotState.direction, StateMachine::TURNING_RIGHT);
+      robotState.action = StateMachine::TURNED_RIGHT_GOING_FORWARD;
+      break;
+    case StateMachine::TURNING_LEFT:
+      robotState.direction = calculateDirectionBasedOnCurrentDirectionAndTurnCommand(robotState.direction, StateMachine::TURNING_LEFT);
+      robotState.action = StateMachine::TURNED_LEFT_GOING_FORWARD;
+      break;
+    case StateMachine::TURNED_RIGHT_GOING_FORWARD:
+    case StateMachine::TURNED_LEFT_GOING_FORWARD:
+      robotState.action = StateMachine::IDLE; // means we need to pick a new location to go to
+
+      if (result.result->success) {
+        auto newNode = std::make_shared<GraphNode>(calculateNewCoordianteBasedOnDirection(robotState.direction, robotState.currentNode->getCoordinate()), result.result->processed_field_marker);
+        map.addNode(newNode); 
+        robotState.currentNode = newNode;
+      } else {
+        auto newNode = std::make_shared<GraphNode>(calculateNewCoordianteBasedOnDirection(robotState.direction, robotState.currentNode->getCoordinate()), 'X');
+        map.addNode(newNode); 
+      }
+      break;
+    case StateMachine::GOING_FORWARD:
+      std::cout << "wat forward" << std::endl;
+      throw std::runtime_error("compile plz");
+      break;
+    case StateMachine::IDLE:
+      std::cout << "wat idle" << std::endl;
+      throw std::runtime_error("compile plz");
+      break;
+    default:
+      throw std::runtime_error("compile plz");
+      break;
+  }
+  // std::cout << "setting action runnig to false" << 
+  isActionRunning = false;
+}
+
+void RoboCleanerExternalBridge::goRight() {
+  robotState.action = StateMachine::TURNING_RIGHT;
+  issueMoveOrder(TURN_RIGHT);
+}
+
+void RoboCleanerExternalBridge::goLeft() {
+  robotState.action = StateMachine::TURNING_LEFT;
+  issueMoveOrder(TURN_LEFT);
 }
 
 void RoboCleanerExternalBridge::updateBatteryStatus() {
-  // std::thread t1{[this]() {
-  //   // std::lock_guard<std::mutex>(this->batteryLock);
-  //   auto request = std::make_shared<QueryBatteryStatus::Request>();
-  //   auto response = this->queryBatteryStatusClient->async_send_request(request);
-
-  //   const auto result = response.get();
-  //   this->robotState.movesLeft = result->battery_status.moves_left;
-  //   std::cout << "moves left " << this->robotState.movesLeft << std::endl;
-  // }};
-  // t1.detach();
-
   std::lock_guard<std::mutex>(this->batteryLock);
-  std::cout << "pre update" << std::endl;
   auto request = std::make_shared<QueryBatteryStatus::Request>();
-  std::cout << "1" << std::endl;
   auto response = this->queryBatteryStatusClient->async_send_request(request);
 
-  std::cout << "2" << std::endl;
   const auto result = response.get();
-  std::cout << "3" << std::endl;
   this->robotState.movesLeft = result->battery_status.moves_left;
-  std::cout << "moves left " << this->robotState.movesLeft << std::endl;
 }
 
 int32_t RoboCleanerExternalBridge::getMovesLeft() {

@@ -1,7 +1,36 @@
+#include <sstream>
 #include "robo_cleaner_controller/robot_state.h"
 
+static std::string actionToString(StateMachine action) {
+    switch (action) {
+    case StateMachine::IDLE:
+        return "IDLE";
+    case StateMachine::GOING_FORWARD:
+        return "GOING_FORWARD";
+    case StateMachine::TURNING_LEFT:
+        return "TURNING_LEFT";
+    case StateMachine::TURNED_LEFT_GOING_FORWARD:
+        return "TURNED_LEFT_GOING_FORWARD";
+    case StateMachine::TURNING_RIGHT:
+        return "TURNING_RIGHT";
+    case StateMachine::TURNED_RIGHT_GOING_FORWARD:
+        return "TURNED_RIGHT_GOING_FORWARD";
+    default:
+        return "action ???";
+    }
+}
 
 RobotState::RobotState() {}
+
+std::string RobotState::toString() {
+    std::stringstream representation;
+    representation << "action: " << actionToString(this->action) << std::endl
+                    << "node: " << this->currentNode->toString() << std::endl
+                    << "direction: " << robot_state::robotDirectionToString(this->direction) << std::endl
+                    << "moves left: " << this->movesLeft << std::endl
+                    << "----";
+    return representation.str();
+}
 
 namespace robot_state
 {

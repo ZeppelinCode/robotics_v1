@@ -122,6 +122,7 @@ static Coordinate calculateNewCoordianteBasedOnDirectionAndTurnIndex(RobotDirect
   }
 }
 
+
 static inline bool isCollisionTile(const RobotState& robotState, size_t tile) {
   return robotState.surroundingTiles[tile] == 'X' || robotState.surroundingTiles[tile] == '#';
 }
