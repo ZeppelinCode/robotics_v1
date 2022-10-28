@@ -1,12 +1,25 @@
 #include <chrono>
 #include <iostream>
 #include <random>
+#include <thread>
 #include "robo_cleaner_controller/robo_cleaner_external_bridge.h"
 #include "robo_cleaner_common/defines/RoboCleanerTopics.h"
 #include "robo_cleaner_interfaces/msg/robot_move_type.hpp"
 
 using namespace std::literals;
 using namespace std::placeholders;
+
+namespace {
+    constexpr auto GO_FORWARD = 0;
+    constexpr auto TURN_LEFT = 1;
+    constexpr auto TURN_RIGHT = 2;
+
+    constexpr auto CLOCKWISE_FORWARD_INDEX = 0;
+    constexpr auto CLOCKWISE_RIGHT_INDEX = 1;
+    constexpr auto CLOCKWISE_BEHIND_INDEX = 2;
+    constexpr auto CLOCKWISE_LEFT_INDEX = 3;
+    constexpr std::array<uint8_t, 4> CLOCKWISE_DIRECTION_INDEXES = {CLOCKWISE_FORWARD_INDEX, CLOCKWISE_RIGHT_INDEX, CLOCKWISE_BEHIND_INDEX, CLOCKWISE_LEFT_INDEX};
+}
 
 template <typename T, typename ActionName>
 static void waitForAction(const T &action, const ActionName &actionName) {
@@ -41,12 +54,96 @@ static Coordinate calculateNewCoordianteBasedOnDirection(RobotDirection currentD
   }
 }
 
+static Coordinate calculateNewCoordianteBasedOnDirectionAndTurnIndex(RobotDirection currentDirection, Coordinate oldCoordinate, uint8_t clockwiseTurnIndex) {
+  switch (currentDirection) {
+  case RobotDirection::LEFT:
+    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::UP:
+    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::RIGHT:
+    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  case RobotDirection::DOWN:
+    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
+      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
+      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
+    }
+    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
+      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
+    }
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  default:
+    return Coordinate(oldCoordinate.x, oldCoordinate.y);
+  }
+}
+
+std::vector<Coordinate> RoboCleanerExternalBridge::getClockwiseCoordinatesAroundMe() {
+    // 0 -> forward, 1 -> right, 2 -> back, 3 -> left
+    std::vector<Coordinate> retval{};
+    for (auto rotationIndex : CLOCKWISE_DIRECTION_INDEXES) {
+        Coordinate coordinate = calculateNewCoordianteBasedOnDirectionAndTurnIndex(
+            robotState.direction,
+            robotState.currentNode->getCoordinate(),
+            rotationIndex 
+        );
+        retval.emplace_back(coordinate);
+    }
+    return retval;
+}
+
 RoboCleanerExternalBridge::RoboCleanerExternalBridge() : Node("CleanerExternalBridge") {}
 
 void RoboCleanerExternalBridge::init() {
+    _sharedReferenceToSelf = shared_from_this();
     using namespace std::chrono_literals;
     initialRobotStateClient = create_client<QueryInitialRobotState>(QUERY_INITIAL_ROBOT_STATE_SERVICE);
     waitForClientToBecomeReachable(initialRobotStateClient);
+
+    queryBatteryStatusClient = create_client<QueryBatteryStatus>(QUERY_BATTERY_STATUS_SERVICE);
+    waitForClientToBecomeReachable(queryBatteryStatusClient);
+
+    chargeBatteryClient = create_client<ChargeBattery>(CHARGE_BATTERY_SERVICE);
+    waitForClientToBecomeReachable(chargeBatteryClient);
 
     moveActionClient = rclcpp_action::create_client<RobotMove>(this, ROBOT_MOVE_ACTION);
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
@@ -56,16 +153,18 @@ void RoboCleanerExternalBridge::init() {
 }
 
 // TODO READ ALL OF THESE TO GET A CLUE OF WHAT TO DO
-// 1. TODO calculate potential coordinates around you and check which ones haven't been visited (keep these in a list, you'll need them later on in 3.)
-// 2.TODO once your battery is at a certain threshold [can be a function for now (70% remaining), will implement later],
+// 1. calculate potential coordinates around you and check which ones haven't been visited (keep these in a list, you'll need them later on in 3.)
+// 2. once your battery is at a certain threshold [can be a function for now (70% remaining), will implement later],
 // do a shortest path and retutrn to the charging station and chanrge to full
 // 3. then do a shortest path to closest undiscovered coordinate and carry on 1. fro mthere
-// try not to issue orders to go to coordinates you know are collisions
+// TODO try not to issue orders to go to coordinates you know are collisions
+// TODO maybe remove the mutex?
 void RoboCleanerExternalBridge::timerCallback() {
     std::lock_guard<std::recursive_mutex> l(mLock);
     if (isActionRunning) {
         return;
     }
+    updateBatteryStatus();
 
     std::random_device rd;     // Only used once to initialise (seed) engine
     std::mt19937 rng(rd());    // Random-number engine used (Mersenne-Twister in this case)
@@ -80,11 +179,13 @@ void RoboCleanerExternalBridge::queryInitialState() {
     std::cout << "calling get initial state" << std::endl;
     auto request = std::make_shared<QueryInitialRobotState::Request>();
     auto result = initialRobotStateClient->async_send_request(request);
+    std::cout << "initial state waiting" << std::endl;
 
-    if (rclcpp::spin_until_future_complete(this->shared_from_this(), result) != rclcpp::FutureReturnCode::SUCCESS) {
+    if (rclcpp::spin_until_future_complete(_sharedReferenceToSelf, result) != rclcpp::FutureReturnCode::SUCCESS) {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to get initial robot state");
         throw std::runtime_error("Failed to get initial robot state");
     } 
+    std::cout << "initial state complete" << std::endl;
 
     const std::shared_ptr<QueryInitialRobotState::Response> responseData = result.get();
     const auto batteryStatus = responseData->initial_robot_state.battery_status;
@@ -96,6 +197,8 @@ void RoboCleanerExternalBridge::queryInitialState() {
     auto newNode = std::make_shared<GraphNode>(GraphNode(Coordinate(0, 0), tileDirtiness));
     robotState.currentNode = newNode;
     map.addNode(newNode);
+
+    updateBatteryStatus();
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
@@ -159,9 +262,9 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
         std::cout << map.toString() << std::endl;
         return;
     }
-    std::cout << "feedback tick" << std::endl;
-    std::cout << "feedback approaching field marker " << feedback->approaching_field_marker 
-            << " percent " << feedback->progress_percent << std::endl;
+    // std::cout << "feedback tick" << std::endl;
+    // std::cout << "feedback approaching field marker " << feedback->approaching_field_marker 
+    //         << " percent " << feedback->progress_percent << std::endl;
 }
 
 void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result) {
@@ -186,9 +289,26 @@ void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove
         return;
     }
 
-
     // const uint8_t tileValueAfterMoveCompletion  = result.result->processed_field_marker;
     std::cout << "result result.processedFieldMarker " << result.result->processed_field_marker
         << "result result.success " << result.result->success
         << std::endl;
+}
+
+void RoboCleanerExternalBridge::updateBatteryStatus() {
+    std::thread t1{[this]() {
+      std::lock_guard<std::mutex>(this->batteryLock);
+      auto request = std::make_shared<QueryBatteryStatus::Request>();
+      auto response = queryBatteryStatusClient->async_send_request(request);
+
+      const auto result = response.get();
+      this->robotState.movesLeft = result->battery_status.moves_left;
+      std::cout << "moves left " << this->robotState.movesLeft << std::endl;
+    }};
+    t1.detach();
+}
+
+int32_t RoboCleanerExternalBridge::getMovesLeft() {
+  std::lock_guard<std::mutex>(this->batteryLock);
+  return robotState.movesLeft;
 }

@@ -6,6 +6,8 @@
 #include <mutex>
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "robo_cleaner_interfaces/srv/query_initial_robot_state.hpp"
+#include "robo_cleaner_interfaces/srv/query_battery_status.hpp"
+#include "robo_cleaner_interfaces/srv/charge_battery.hpp"
 #include "robo_cleaner_interfaces/action/robot_move.hpp"
 #include "robo_cleaner_controller/map_graph.h"
 #include "robo_cleaner_controller/robot_state.h"
@@ -14,23 +16,34 @@ class RoboCleanerExternalBridge : public rclcpp::Node {
 public:
   using QueryInitialRobotState = robo_cleaner_interfaces::srv::QueryInitialRobotState;
   using RobotMove = robo_cleaner_interfaces::action::RobotMove;
+  using QueryBatteryStatus = robo_cleaner_interfaces::srv::QueryBatteryStatus;
+  using ChargeBattery = robo_cleaner_interfaces::srv::ChargeBattery;
   using GoalHandleRobotMove = rclcpp_action::ClientGoalHandle<RobotMove>;
+
+
   RoboCleanerExternalBridge();
   void init();
   void issueMoveOrder(int8_t moveType);
 private:
   std::shared_ptr<rclcpp::Client<QueryInitialRobotState>> initialRobotStateClient;
+  std::shared_ptr<rclcpp::Client<QueryBatteryStatus>> queryBatteryStatusClient;
+  std::shared_ptr<rclcpp::Client<ChargeBattery>> chargeBatteryClient;
   std::shared_ptr<rclcpp_action::Client<RobotMove>> moveActionClient;
   MapGraph map{};
   RobotState robotState;
   rclcpp::TimerBase::SharedPtr timer;
   std::atomic<bool> isActionRunning = false;
   std::recursive_mutex mLock{};
+  std::mutex batteryLock{};
+  rclcpp::Node::SharedPtr _sharedReferenceToSelf;
 
   void moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future);
   void moveGoalFeedbackCallback(GoalHandleRobotMove::SharedPtr, const std::shared_ptr<const RobotMove::Feedback> feedback);
   void moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result);
   void timerCallback();
   void queryInitialState();
+  void updateBatteryStatus();
+  int32_t getMovesLeft();
+  std::vector<Coordinate> getClockwiseCoordinatesAroundMe();
 };
 #endif
