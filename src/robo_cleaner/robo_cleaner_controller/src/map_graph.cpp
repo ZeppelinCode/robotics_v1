@@ -60,13 +60,14 @@ MapGraph::MapGraph() {
 
 }
 
-void MapGraph::addNode(std::shared_ptr<GraphNode> newNode) {
+std::shared_ptr<GraphNode> MapGraph::addNode(std::shared_ptr<GraphNode> newNode) {
     auto possiblyExistingNode = getNodeAtCoordinate(newNode->getCoordinate());
     if (possiblyExistingNode) {
-        possiblyExistingNode->get()->setBlockType(newNode->getBlockType());
-        return;
+        (*possiblyExistingNode)->setBlockType(newNode->getBlockType());
+        return *possiblyExistingNode;
     }
     mNodes.emplace_back(newNode);
+    return newNode;
 }
 
 void MapGraph::shiftAllNodeCoordiantesToTheRightBy(Coordinate shiftAmount) {

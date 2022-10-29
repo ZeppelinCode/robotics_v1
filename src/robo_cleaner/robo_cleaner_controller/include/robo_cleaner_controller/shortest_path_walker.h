@@ -6,10 +6,14 @@ class ShortestPathWalker {
 public:
   ShortestPathWalker();
   ShortestPathWalker(std::vector<Coordinate>&& coordinatesToTrace);
+  ShortestPathWalker(std::vector<Coordinate>&& coordinatesToTrace, bool isValid);
   bool hasUntracedCoordinates();
   Coordinate getNextCoordinate();
+  bool isValid();
+  void setInvalid();
 private:
   std::vector<Coordinate> coordinatesToTrace;
   size_t nextCoordinateIndex;
+  bool mIsValid{true};
 };
 #endif

@@ -4,8 +4,15 @@ ShortestPathWalker::ShortestPathWalker() : coordinatesToTrace{std::vector<Coordi
 
 ShortestPathWalker::ShortestPathWalker(std::vector<Coordinate>&& coordinatesToTrace) : coordinatesToTrace{coordinatesToTrace}, nextCoordinateIndex{0} {}
 
+ShortestPathWalker::ShortestPathWalker(std::vector<Coordinate>&& coordinatesToTrace, bool isValid) 
+: coordinatesToTrace{coordinatesToTrace}, nextCoordinateIndex{0}, mIsValid{isValid} {}
+
 bool ShortestPathWalker::hasUntracedCoordinates() {
     return nextCoordinateIndex < coordinatesToTrace.size();
+}
+
+bool ShortestPathWalker::isValid() {
+    return mIsValid;
 }
 
 Coordinate ShortestPathWalker::getNextCoordinate() {

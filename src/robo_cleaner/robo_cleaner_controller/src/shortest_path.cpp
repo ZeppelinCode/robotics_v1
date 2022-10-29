@@ -14,8 +14,7 @@ static void dfs(
     Coordinate from,
     Coordinate to,
     std::vector<Coordinate>& currentPath,
-    std::vector<Coordinate>& bestPath,
-    bool* anyPathFound
+    std::vector<Coordinate>& bestPath
 ) {
     if (!bestPath.empty()) {
         if (currentPath.size() > bestPath.size()) {
@@ -33,22 +32,21 @@ static void dfs(
         return;
     }
 
-    if (map[from.y][from.x] == 'X') {
+    if (map[from.y][from.x] == map_graph::COLLISION_COORDINATE) {
         return;
     }
 
     currentPath.push_back(from);
     if (from == to) {
         if (currentPath.size() < bestPath.size() || bestPath.empty()) {
-            *anyPathFound = true;
             bestPath = std::vector<Coordinate>(currentPath);
         }
     }
 
-    dfs(map, Coordinate(from.x-1, from.y), to, currentPath, bestPath, anyPathFound);
-    dfs(map, Coordinate(from.x+1, from.y), to, currentPath, bestPath, anyPathFound);
-    dfs(map, Coordinate(from.x, from.y-1), to, currentPath, bestPath, anyPathFound);
-    dfs(map, Coordinate(from.x, from.y+1), to, currentPath, bestPath, anyPathFound);
+    dfs(map, Coordinate(from.x-1, from.y), to, currentPath, bestPath);
+    dfs(map, Coordinate(from.x+1, from.y), to, currentPath, bestPath);
+    dfs(map, Coordinate(from.x, from.y-1), to, currentPath, bestPath);
+    dfs(map, Coordinate(from.x, from.y+1), to, currentPath, bestPath);
     if (!currentPath.empty()) {
         currentPath.pop_back();
     }
@@ -58,7 +56,6 @@ static void dfs(
 std::vector<Coordinate> shortest_path::shortestPathFromTo(const std::vector<std::vector<unsigned char>>& map, Coordinate from, Coordinate to) {
     std::vector<Coordinate> currentPath{};
     std::vector<Coordinate> bestPath{};
-    bool anyPathFound = false;
-    dfs(map, from, to, currentPath, bestPath, &anyPathFound);
+    dfs(map, from, to, currentPath, bestPath);
     return bestPath;
 }

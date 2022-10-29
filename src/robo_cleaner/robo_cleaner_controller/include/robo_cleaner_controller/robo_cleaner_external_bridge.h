@@ -51,6 +51,7 @@ private:
   void updateBatteryStatus();
   void chargeBatteryToFull();
   bool shouldRecharge();
+  bool isChargeFull();
   std::vector<Coordinate> getClockwiseCoordinatesAroundMe();
   void goLeft();
   void goRight();

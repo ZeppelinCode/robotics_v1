@@ -57,7 +57,7 @@ private:
 class MapGraph {
 public:
     MapGraph();
-    void addNode(const std::shared_ptr<GraphNode> node);
+    std::shared_ptr<GraphNode> addNode(const std::shared_ptr<GraphNode> node);
     std::string toString();
     bool hasCoordinateBeenVisited(const Coordinate& coordinate) const;
     std::vector<Coordinate> getUnvisitedCoordinates(const std::vector<Coordinate>& coordinatesOfInterest) const;

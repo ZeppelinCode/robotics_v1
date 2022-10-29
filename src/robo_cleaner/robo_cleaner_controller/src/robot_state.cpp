@@ -15,6 +15,10 @@ static std::string actionToString(StateMachine action) {
         return "TURNING_RIGHT";
     case StateMachine::TURNED_RIGHT_GOING_FORWARD:
         return "TURNED_RIGHT_GOING_FORWARD";
+    case StateMachine::FIRST_HALF_OF_TURN:
+        return "FIRST_HALF_OF_TURN";
+    case StateMachine::SECOND_HALF_OF_TURN:
+        return "SECOND_HALF_OF_TURN";
     default:
         return "action ???";
     }
