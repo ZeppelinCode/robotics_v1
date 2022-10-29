@@ -19,6 +19,12 @@ std::string string_format( const std::string& format, Args ... args )
     return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
 }
 
+namespace map_graph {
+    constexpr auto COLLISION_COORDINATE = 'X';
+    constexpr auto UNEXPLORED_COORDINATE = '#';
+    constexpr auto CHARGING_STATION_COORDINATE = '@';
+}
+
 struct Coordinate {
     ssize_t x;
     ssize_t y;
@@ -31,20 +37,21 @@ struct Coordinate {
     bool operator==(const Coordinate& o)const {
         return o.x == x && o.y == y;
     }
+
 };
 
 class GraphNode {
 public:
-    GraphNode(Coordinate coordinate, char blockType);
+    GraphNode(Coordinate coordinate, unsigned char blockType);
     std::string toString();
     Coordinate getCoordinate();
-    char getBlockType();
+    unsigned char getBlockType();
     void setBlockType(char blockType);
     void markVisited();
     void shiftCoordinateToTheRightBy(Coordinate shiftAmount);
 private:
     Coordinate mCoordiante;
-    char mBlockType; // # -> edge, X -> obstacle
+    unsigned char mBlockType; // # -> edge, X -> obstacle
 };
 
 class MapGraph {
@@ -53,6 +60,7 @@ public:
     void addNode(const std::shared_ptr<GraphNode> node);
     std::string toString();
     bool hasCoordinateBeenVisited(const Coordinate& coordinate) const;
+    std::vector<Coordinate> getUnvisitedCoordinates(const std::vector<Coordinate>& coordinatesOfInterest) const;
     std::optional<std::shared_ptr<GraphNode>> getNodeAtCoordinate(const Coordinate& coordinate) const;
     const std::vector<std::shared_ptr<GraphNode>> getNodes() const;
     void shiftAllNodeCoordiantesToTheRightBy(Coordinate shiftAmount);

@@ -2,14 +2,14 @@
 #include <iostream>
 #include <sstream>
 
-GraphNode::GraphNode(Coordinate coordinate, char blockType) : mCoordiante{coordinate}, mBlockType{blockType} {
+GraphNode::GraphNode(Coordinate coordinate, unsigned char blockType) : mCoordiante{coordinate}, mBlockType{blockType} {
 }
 
 Coordinate GraphNode::getCoordinate() {
     return mCoordiante;
 }
 
-char GraphNode::getBlockType() {
+unsigned char GraphNode::getBlockType() {
     return mBlockType;
 }
 
@@ -21,6 +21,17 @@ bool MapGraph::hasCoordinateBeenVisited(const Coordinate& targetCoordinate) cons
         }
     }
     return false;
+}
+
+std::vector<Coordinate> MapGraph::getUnvisitedCoordinates(const std::vector<Coordinate>& coordinatesOfInterest) const {
+    std::vector<Coordinate> retval{};
+    for (const auto &targetCoord: coordinatesOfInterest) {
+        if (hasCoordinateBeenVisited(targetCoord)) {
+            continue;
+        }
+        retval.emplace_back(targetCoord);
+    }
+    return retval;
 }
 
 std::optional<std::shared_ptr<GraphNode>> MapGraph::getNodeAtCoordinate(const Coordinate& targetCoordinate) const {

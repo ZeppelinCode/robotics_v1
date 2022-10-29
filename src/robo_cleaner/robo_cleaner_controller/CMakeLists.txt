@@ -43,6 +43,12 @@ add_executable(
     ${_SRC_DIR}/shortest_path.cpp
     ${_INC_DIR}/robot_state.h
     ${_SRC_DIR}/robot_state.cpp
+    ${_INC_DIR}/coordinate_remapper.h
+    ${_SRC_DIR}/coordinate_remapper.cpp
+    ${_INC_DIR}/route_planner.h
+    ${_SRC_DIR}/route_planner.cpp
+    ${_INC_DIR}/shortest_path_walker.h
+    ${_SRC_DIR}/shortest_path_walker.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

@@ -22,23 +22,6 @@ struct MapStructure {
         representation << std::endl;
         return representation.str();
     }
-
-    std::vector<std::vector<unsigned char>> asMatrix()const {
-        std::vector<std::vector<unsigned char>> retval{};
-        retval.resize(rows, std::vector<unsigned char>{});
-
-        for (auto& v : retval) {
-            v.resize(cols, '0');
-        }
-
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                retval[i][j] = data[i*cols + j];
-            }
-        }
-
-        return retval;
-    }
 };
 
 namespace coordinate_remapper{

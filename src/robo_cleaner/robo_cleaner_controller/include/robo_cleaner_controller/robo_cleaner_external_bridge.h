@@ -11,6 +11,7 @@
 #include "robo_cleaner_interfaces/action/robot_move.hpp"
 #include "robo_cleaner_controller/map_graph.h"
 #include "robo_cleaner_controller/robot_state.h"
+#include "robo_cleaner_controller/shortest_path_walker.h"
 
 class RoboCleanerExternalBridge : public rclcpp::Node {
 public:
@@ -34,7 +35,10 @@ private:
   RobotState robotState;
   rclcpp::TimerBase::SharedPtr timer;
   std::atomic<bool> isActionRunning = false;
+  std::atomic<bool> isWalkingTowardsChargingStation = false;
   std::recursive_mutex actionLock{};
+  std::vector<Coordinate> unvisitedCoordinates; // Visit candidates separate class
+  ShortestPathWalker shortestPathWalker{};
   std::mutex batteryLock{};
   rclcpp::Node::SharedPtr _sharedReferenceToSelf;
   rclcpp::CallbackGroup::SharedPtr batteryStatusCallbackGroup;
@@ -45,10 +49,13 @@ private:
   void timerCallback();
   void queryInitialState();
   void updateBatteryStatus();
-  int32_t getMovesLeft();
+  void chargeBatteryToFull();
+  bool shouldRecharge();
   std::vector<Coordinate> getClockwiseCoordinatesAroundMe();
   void goLeft();
   void goRight();
   void goForward();
+  void turnAround();
+  bool goToCoordinate(const Coordinate& coord);
 };
 #endif
