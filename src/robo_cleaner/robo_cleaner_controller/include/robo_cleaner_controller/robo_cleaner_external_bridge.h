@@ -12,6 +12,7 @@
 #include "robo_cleaner_controller/map_graph.h"
 #include "robo_cleaner_controller/robot_state.h"
 #include "robo_cleaner_controller/shortest_path_walker.h"
+#include "robo_cleaner_interfaces/msg/user_authenticate.hpp"
 
 class RoboCleanerExternalBridge : public rclcpp::Node {
 public:
@@ -20,6 +21,7 @@ public:
   using QueryBatteryStatus = robo_cleaner_interfaces::srv::QueryBatteryStatus;
   using ChargeBattery = robo_cleaner_interfaces::srv::ChargeBattery;
   using GoalHandleRobotMove = rclcpp_action::ClientGoalHandle<RobotMove>;
+  using UserAuthenticate = robo_cleaner_interfaces::msg::UserAuthenticate;
 
 
   RoboCleanerExternalBridge();
@@ -30,6 +32,7 @@ private:
   std::shared_ptr<rclcpp::Client<QueryInitialRobotState>> initialRobotStateClient;
   std::shared_ptr<rclcpp::Client<QueryBatteryStatus>> queryBatteryStatusClient;
   std::shared_ptr<rclcpp::Client<ChargeBattery>> chargeBatteryClient;
+  std::shared_ptr<rclcpp::Publisher<UserAuthenticate>> userAuthenticatePublisher;
   std::shared_ptr<rclcpp_action::Client<RobotMove>> moveActionClient;
   MapGraph map{};
   RobotState robotState;
@@ -42,11 +45,13 @@ private:
   std::mutex batteryLock{};
   rclcpp::Node::SharedPtr _sharedReferenceToSelf;
   rclcpp::CallbackGroup::SharedPtr batteryStatusCallbackGroup;
+  int tickCounter{0};
 
   void moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future);
   void moveGoalFeedbackCallback(GoalHandleRobotMove::SharedPtr, const std::shared_ptr<const RobotMove::Feedback> feedback);
   void moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result);
   void timerCallback();
+  bool onlyOneSpotLeftAndImOnIt();
   void queryInitialState();
   void updateBatteryStatus();
   void chargeBatteryToFull();

@@ -182,6 +182,17 @@ std::vector<Coordinate> RoboCleanerExternalBridge::getClockwiseCoordinatesAround
 
 RoboCleanerExternalBridge::RoboCleanerExternalBridge() : Node("CleanerExternalBridge") {}
 
+void publishUserAuthenticate(
+  std::shared_ptr<rclcpp::Node> node,
+  std::shared_ptr<rclcpp::Publisher<robo_cleaner_interfaces::msg::UserAuthenticate>> userAuthenticatePublisher
+) {
+  robo_cleaner_interfaces::msg::UserAuthenticate userAuthenticate;
+  userAuthenticate.repository = "https://github.com/ZeppelinCode/robotics_v1"; //userParams.repository;
+  userAuthenticate.user = "Kristian Sonev"; // userParams.user;
+  userAuthenticate.commit_sha = "c59d454827fe48f6e947256d34d7f36a4e31b9a7"; // userParams.commitSha;
+  userAuthenticatePublisher->publish(userAuthenticate);
+}
+
 void RoboCleanerExternalBridge::init() {
     using namespace std::chrono_literals;
     _sharedReferenceToSelf = shared_from_this();
@@ -204,26 +215,63 @@ void RoboCleanerExternalBridge::init() {
     moveActionClient = rclcpp_action::create_client<RobotMove>(this, ROBOT_MOVE_ACTION);
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
 
+    constexpr size_t queueSize = 10;
+    const rclcpp::QoS qos(queueSize);
+    userAuthenticatePublisher = create_publisher<UserAuthenticate>(USER_AUTHENTICATE_TOPIC, qos);
 }
+
+// [CRASH] Executing action server but nothing is ready
 
 void RoboCleanerExternalBridge::clean() {
     queryInitialState();
-    timer = create_wall_timer(293ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
+    publishUserAuthenticate(_sharedReferenceToSelf, userAuthenticatePublisher);
+    // timer = create_wall_timer(1511ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
+    timer = create_wall_timer(223ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
 }
 
 bool isTileDirty(unsigned char tile)  {
   return tile == '1' || tile == '2' || tile == '3';
 }
 
-// TODO READ ALL OF THESE TO GET A CLUE OF WHAT TO DO
-// 1. calculate potential coordinates around you and check which ones haven't been visited (keep these in a list, you'll need them later on in 3.)
-// 2. once your battery is at a certain threshold [can be a function for now (70% remaining), will implement later],
-// do a shortest path and retutrn to the charging station and chanrge to full
-// 3. then do a shortest path to closest undiscovered coordinate and carry on 1. fro mthere
-// TODO try not to issue orders to go to coordinates you know are collisions
-// TODO maybe remove the mutex?
+bool RoboCleanerExternalBridge::onlyOneSpotLeftAndImOnIt() {
+  int numberOfSpotsLeft = 0;
+  Coordinate spot = Coordinate(std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min());
+  for (const auto& node : map.getNodes()) {
+    if (node->getBlockType() >= '1' && node->getBlockType() <= '3') {
+      numberOfSpotsLeft += 1;
+      spot = node->getCoordinate();
+    }
+    if (numberOfSpotsLeft > 1) {
+      LOG("spots left %d; EXITING", numberOfSpotsLeft);
+      return false;
+    }
+  }
+  LOG("spots left %d, me: %s, spot: %s, on it: %d", 
+    numberOfSpotsLeft,
+    robotState.currentNode->getCoordinate().toString().c_str(),
+    spot.toString().c_str(),
+    spot == robotState.currentNode->getCoordinate()
+    );
+  return numberOfSpotsLeft == 1 && spot == robotState.currentNode->getCoordinate();
+}
+
+bool nothingLeftToExplore(const MapGraph& map) {
+  int toExplore = 0;
+  for (const auto& node: map.getNodes()) {
+    if (node->getBlockType() == '#' || (node->getBlockType() >= '1' && node->getBlockType() <= '3')) {
+      toExplore += 1;
+    }
+  }
+
+  return toExplore == 0 && map.getNodes().size() > 5;
+}
+
 void RoboCleanerExternalBridge::timerCallback() {
-    std::lock_guard<std::recursive_mutex> l{actionLock};
+    // if ((tickCounter++) % 10 == 0) {
+    //   LOG("---------------- [SLEEPING] ----------------");
+    //   std::this_thread::sleep_for(1000ms);
+    // }
+    // std::lock_guard<std::recursive_mutex> l{actionLock};
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
     LOG("tick map");
     LOG("%s", coordinate_remapper::graphToMatrix(map).toString().c_str());
@@ -233,6 +281,13 @@ void RoboCleanerExternalBridge::timerCallback() {
 
     if (isActionRunning) {
       LOG("----- [NO] timer action running");
+      return;
+    }
+
+    if (nothingLeftToExplore(map) && !isWalkingTowardsChargingStation) {
+      shortestPathWalker = route_planner::calculateRouteToCharingStation(map, robotState.currentNode->getCoordinate());
+      isWalkingTowardsChargingStation = true;
+      robotState.action = StateMachine::IDLE;
       return;
     }
 
@@ -246,11 +301,6 @@ void RoboCleanerExternalBridge::timerCallback() {
       shortestPathWalker = route_planner::calculateRouteToCharingStation(map, robotState.currentNode->getCoordinate());
       isWalkingTowardsChargingStation = true;
       robotState.action = StateMachine::IDLE;
-      return;
-    }
-
-    if (shouldRecharge() && robotState.currentNode->getBlockType() == map_graph::CHARGING_STATION_COORDINATE) {
-      chargeBatteryToFull();
       return;
     }
 
@@ -275,6 +325,7 @@ void RoboCleanerExternalBridge::timerCallback() {
         if (successfulNavigationToNearbyCoordinate) {
           break;
         }
+
 
         const auto coordinatesAroundMe = getClockwiseCoordinatesAroundMe();
         // FORWARD
@@ -321,8 +372,56 @@ void RoboCleanerExternalBridge::timerCallback() {
           break;
         }
 
-        LOG("couldn't go in any direction, resorting to route planner");
+        // Only one dirty tile left, we need to "scrub" it
+        LOG("PRE SPOT");
+        if (onlyOneSpotLeftAndImOnIt()) {
+          const auto coordinatesAroundMe = getClockwiseCoordinatesAroundMe();
+          const auto inFrontOfMeNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
+          if (inFrontOfMeNode && (*inFrontOfMeNode)->getBlockType() == '0') {
+            std::vector<Coordinate> scrubPath{};
+            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
+              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+            }
+            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+            break;
+          }
 
+          const auto rightNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
+          if (rightNode && (*rightNode)->getBlockType() == '0') {
+            std::vector<Coordinate> scrubPath{};
+            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
+              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+            }
+            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+            break;
+          }
+
+          const auto leftNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
+          if (leftNode && (*leftNode)->getBlockType() == '0') {
+            std::vector<Coordinate> scrubPath{};
+            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
+              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+            }
+            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+            break;
+          }
+
+          const auto behindNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
+          if (behindNode && (*behindNode)->getBlockType() == '0') {
+            std::vector<Coordinate> scrubPath{};
+            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
+              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+            }
+            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+            break;
+          }
+        }
+
+        LOG("couldn't go in any direction, resorting to route planner");
         // Most places around us have been visited; need to go somewhere unknown
         shortestPathWalker = route_planner::calculateRouteToClosestUnexploredCoordiante(map, robotState.currentNode->getCoordinate());
         while (!shortestPathWalker.isValid()) {
@@ -429,11 +528,13 @@ void RoboCleanerExternalBridge::queryInitialState() {
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
-    std::lock_guard<std::recursive_mutex> l{actionLock};
+    // std::lock_guard<std::recursive_mutex> l{actionLock};
     if (isActionRunning) {
       LOG("can't issue move order because action is running");
       return;
     }
+
+    LOG("setting action to running");
     isActionRunning = true;
     auto sendGoalOptions = rclcpp_action::Client<RobotMove>::SendGoalOptions();
     sendGoalOptions.goal_response_callback =
@@ -453,7 +554,7 @@ void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
 }
 
 void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future) {
-    std::lock_guard<std::recursive_mutex> l{actionLock};
+    // std::lock_guard<std::recursive_mutex> l{actionLock};
     auto goal_handle = future.get();
     if (!goal_handle) {
       LOGR("move goal was rejected by server");
@@ -483,7 +584,7 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
     [[maybe_unused]] const GoalHandleRobotMove::SharedPtr, 
     const std::shared_ptr<const RobotMove::Feedback> feedback
 ) {
-  std::lock_guard<std::recursive_mutex> l{actionLock};
+  // std::lock_guard<std::recursive_mutex> l{actionLock};
   if (isApproachingCollision(feedback->approaching_field_marker)) {
     moveActionClient->async_cancel_all_goals();
     LOG("cancelling goal due to approaching collision %c", feedback->approaching_field_marker);
@@ -506,24 +607,23 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
 }
 
 void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result) {
-    std::lock_guard<std::recursive_mutex> l{actionLock};
+    // std::lock_guard<std::recursive_mutex> l{actionLock};
     LOG("move goal result callback");
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
-        isActionRunning = false;
+        LOG("setting action to not running %s, %d", __FILE__, __LINE__);
         break;
     case rclcpp_action::ResultCode::ABORTED:
         isActionRunning = false;
-        std::cerr << "Goal was aborted" << std::endl;
+        LOG("setting action to not running %s, %d", __FILE__, __LINE__);
         return;
     case rclcpp_action::ResultCode::CANCELED:
         isActionRunning = false;
-        std::cerr << "Goal was aborted" << std::endl;
+        LOG("setting action to not running %s, %d", __FILE__, __LINE__);
         return;
     default:
         isActionRunning = false;
-        std::cerr << "Unknown result code: "
-                << static_cast<int32_t>(result.code) << std::endl;
+        LOG("setting action to not running %s, %d", __FILE__, __LINE__);
         return;
     }
 
@@ -572,6 +672,7 @@ void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove
       throw std::runtime_error("compile plz");
       break;
   }
+  LOG("setting action to not running %s, %d", __FILE__, __LINE__);
   isActionRunning = false;
 }
 
@@ -619,7 +720,7 @@ void RoboCleanerExternalBridge::chargeBatteryToFull() {
 
 bool RoboCleanerExternalBridge::shouldRecharge() {
   std::lock_guard<std::mutex>(this->batteryLock);
-  return static_cast<float>(robotState.movesLeft) / static_cast<float>(robotState.maxMovesOnFullEnergy) < 0.5;
+  return static_cast<float>(robotState.movesLeft) / static_cast<float>(robotState.maxMovesOnFullEnergy) < 0.55;
 }
 
 bool RoboCleanerExternalBridge::isChargeFull() {

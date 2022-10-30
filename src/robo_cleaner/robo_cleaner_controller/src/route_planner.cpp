@@ -27,37 +27,26 @@ namespace route_planner {
     remappedCurrentCoordinateToMatrixSpace.x = remappedCurrentCoordinateToMatrixSpace.x - vectorisedGraph.topLeftCoordinateBeforeRemapping.x;
     remappedCurrentCoordinateToMatrixSpace.y = remappedCurrentCoordinateToMatrixSpace.y - vectorisedGraph.topLeftCoordinateBeforeRemapping.y;
 
-    // TODO this can be optimized, don't ban coordinates but return a sorted list of all manhattan distances and
-    // try them one by one
-    std::vector<Coordinate> shortestPath{};
-    while (shortestPath.empty()) {
-      // Find closest unexplored coordinate (this can be done as part of the shortest path algorithm but then I would've had to rework it) 
-      ssize_t smallestManhattanDistance = std::numeric_limits<ssize_t>::max();
-      Coordinate closestUnexploredCoordinate{0, 0};
-      for (auto row = 0; row < vectorisedGraph.data.size(); row++) {
-        for (auto col = 0; col< vectorisedGraph.data[0].size(); col++) {
-          Coordinate potentialTargetCoordinate{col, row};
-          if (potentialTargetCoordinate == remappedCurrentCoordinateToMatrixSpace) { // Don't compare with myself, will always be shortest distance (0)
-            continue;
-          }
-          auto manhattanDistance = calculateManhattanDistance(remappedCurrentCoordinateToMatrixSpace, potentialTargetCoordinate);
-          if (manhattanDistance < smallestManhattanDistance 
-            && (vectorisedGraph.data[row][col] == map_graph::UNEXPLORED_COORDINATE
-                || vectorisedGraph.data[row][col] == '1'
-                || vectorisedGraph.data[row][col] == '2')) { // Does shortest path to myself
-            smallestManhattanDistance = manhattanDistance;
-            closestUnexploredCoordinate = potentialTargetCoordinate;
-          }
+    ssize_t smallestManhattanDistance = std::numeric_limits<ssize_t>::max();
+    Coordinate closestUnexploredCoordinate{0, 0};
+    for (auto row = 0; row < vectorisedGraph.data.size(); row++) {
+      for (auto col = 0; col< vectorisedGraph.data[0].size(); col++) {
+        Coordinate potentialTargetCoordinate{col, row};
+        if (potentialTargetCoordinate == remappedCurrentCoordinateToMatrixSpace) { // Don't compare with myself, will always be shortest distance (0)
+          continue;
+        }
+        auto manhattanDistance = calculateManhattanDistance(remappedCurrentCoordinateToMatrixSpace, potentialTargetCoordinate);
+        if (manhattanDistance < smallestManhattanDistance 
+          && (vectorisedGraph.data[row][col] == map_graph::UNEXPLORED_COORDINATE
+              || vectorisedGraph.data[row][col] == '1'
+              || vectorisedGraph.data[row][col] == '2')) {
+          smallestManhattanDistance = manhattanDistance;
+          closestUnexploredCoordinate = potentialTargetCoordinate;
         }
       }
-
-      LOG("looking for shortest path to %s", closestUnexploredCoordinate.toString().c_str());
-      shortestPath = shortest_path::shortestPathFromTo(vectorisedGraph.data, remappedCurrentCoordinateToMatrixSpace, closestUnexploredCoordinate);
-      if (shortestPath.empty()) {
-        LOG("coordinate %s is unreachable, banning it", closestUnexploredCoordinate.toString().c_str());
-        vectorisedGraph.data[closestUnexploredCoordinate.y][closestUnexploredCoordinate.x] = 'X';
-      }
     }
+
+    auto shortestPath = shortest_path::shortestPathFromTo(vectorisedGraph.data, remappedCurrentCoordinateToMatrixSpace, closestUnexploredCoordinate);
 
     // Remap back to map graph space
     for (auto& coord : shortestPath) {

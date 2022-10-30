@@ -9,6 +9,16 @@ static bool isCoordinateInVector(const Coordinate& target, std::vector<Coordinat
   return false;
 }
 
+static int getNumberOfUnexploredTilesOnPath(const std::vector<std::vector<unsigned char>>& map, const std::vector<Coordinate>& path) {
+    int count = 0;
+    for (const auto& coord : path) {
+        if (map[coord.y][coord.x] == '#' || (map[coord.y][coord.x] >= '1' && map[coord.y][coord.x] <= '3')) {
+            count += 1;
+        }
+    }
+    return count;
+}
+
 static void dfs(
     const std::vector<std::vector<unsigned char>>& map,
     Coordinate from,
@@ -40,6 +50,12 @@ static void dfs(
     if (from == to) {
         if (currentPath.size() < bestPath.size() || bestPath.empty()) {
             bestPath = std::vector<Coordinate>(currentPath);
+        }
+        
+        if (currentPath.size() == bestPath.size()) {
+            if (getNumberOfUnexploredTilesOnPath(map, currentPath) > getNumberOfUnexploredTilesOnPath(map, bestPath)) {
+                bestPath = std::vector<Coordinate>(currentPath);
+            }
         }
     }
 
