@@ -3,7 +3,35 @@
 #include <limits>
 #include <cmath>
 #include <iostream>
+#include "utils/Log.h"
 
+static bool isPseudoWalkableCoordionate(unsigned char coordinate) {
+    return coordinate != 'X' && coordinate != '#';
+}
+
+static bool isReachable(const std::vector<std::vector<unsigned char>>& matrixGraphRepresentation, size_t rowi, size_t coli) {
+    auto above = 'X';
+    if (rowi > 0) {
+        above = matrixGraphRepresentation[rowi-1][coli];
+    }
+
+    auto right = 'X';
+    if (coli  < matrixGraphRepresentation[0].size() - 1) {
+        right = matrixGraphRepresentation[rowi][coli + 1];
+    }
+
+    auto left = 'X';
+    if (coli > 0) {
+        left = matrixGraphRepresentation[rowi][coli - 1];
+    }
+
+    auto below = 'X';
+    if (rowi < matrixGraphRepresentation.size() - 1) {
+        below = matrixGraphRepresentation[rowi+1][coli];
+    }
+    return isPseudoWalkableCoordionate(above) || isPseudoWalkableCoordionate(right)
+        || isPseudoWalkableCoordionate(left) || isPseudoWalkableCoordionate(below);
+}
 namespace coordinate_remapper {
     static std::pair<Coordinate, Coordinate> findTopLeftCornerAndBottomRightCorner(const MapGraph& graph) {
         ssize_t smallestX = std::numeric_limits<ssize_t>::max();
@@ -46,6 +74,15 @@ namespace coordinate_remapper {
             nodeCoordinate.x = nodeCoordinate.x - topLeftCorner.x;
             nodeCoordinate.y = nodeCoordinate.y - topLeftCorner.y;
             matrixGraphRepresentation[nodeCoordinate.y][nodeCoordinate.x] = nodeTile;
+        }
+
+        // Prune unreachable destinations
+        for (size_t rowi = 0; rowi < matrixGraphRepresentation.size(); rowi++) {
+            for (size_t coli = 0; coli < matrixGraphRepresentation[rowi].size(); coli++) {
+                if (!isReachable(matrixGraphRepresentation, rowi, coli)) {
+                    matrixGraphRepresentation[rowi][coli] = 'X';
+                }
+            }
         }
 
         return VectorisedMapStructure{
