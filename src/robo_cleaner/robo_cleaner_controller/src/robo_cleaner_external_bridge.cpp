@@ -5,6 +5,7 @@
 #include "robo_cleaner_controller/robo_cleaner_external_bridge.h"
 #include "robo_cleaner_controller/coordinate_remapper.h"
 #include "robo_cleaner_controller/route_planner.h"
+#include "robo_cleaner_controller/direction_coordinate_calculator.h"
 #include "robo_cleaner_common/defines/RoboCleanerTopics.h"
 #include "robo_cleaner_interfaces/msg/robot_move_type.hpp"
 #include "utils/Log.h"
@@ -24,11 +25,6 @@ namespace {
     constexpr auto GO_FORWARD = 0;
     constexpr auto TURN_LEFT = 1;
     constexpr auto TURN_RIGHT = 2;
-
-    constexpr auto CLOCKWISE_FORWARD_INDEX = 0;
-    constexpr auto CLOCKWISE_RIGHT_INDEX = 1;
-    constexpr auto CLOCKWISE_BEHIND_INDEX = 2;
-    constexpr auto CLOCKWISE_LEFT_INDEX = 3;
     constexpr std::array<uint8_t, 4> CLOCKWISE_DIRECTION_INDEXES = {CLOCKWISE_FORWARD_INDEX, CLOCKWISE_RIGHT_INDEX, CLOCKWISE_BEHIND_INDEX, CLOCKWISE_LEFT_INDEX};
 }
 
@@ -48,122 +44,6 @@ static void waitForClientToBecomeReachable(const std::shared_ptr<T>& service) {
         }
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
     }
-}
-
-static RobotDirection calculateDirectionBasedOnCurrentDirectionAndTurnCommand(RobotDirection currentDirection, StateMachine turnCommand) {
-  if (turnCommand == StateMachine::TURNING_LEFT) {
-    switch (currentDirection)
-    {
-    case RobotDirection::LEFT:
-      return RobotDirection::DOWN;
-    case RobotDirection::UP:
-      return RobotDirection::LEFT;
-    case RobotDirection::DOWN:
-      return RobotDirection::RIGHT;
-    case RobotDirection::RIGHT:
-      return RobotDirection::UP;
-    case RobotDirection::UNKNOWN:
-    default:
-      throw std::runtime_error("unknown direction so no idea where we're turning to (TURNING_LEFT)");
-      break;
-    }
-  }
-  if (turnCommand == StateMachine::TURNING_RIGHT) {
-    switch (currentDirection)
-    {
-    case RobotDirection::LEFT:
-      return RobotDirection::UP;
-    case RobotDirection::UP:
-      return RobotDirection::RIGHT;
-    case RobotDirection::DOWN:
-      return RobotDirection::LEFT;
-    case RobotDirection::RIGHT:
-      return RobotDirection::DOWN;
-    case RobotDirection::UNKNOWN:
-    default:
-      throw std::runtime_error("unknown direction so no idea where we're turning to (TURNING_RIGHT)");
-      break;
-    }
-  }
-  return RobotDirection::UNKNOWN;
-}
-
-static Coordinate calculateNewCoordianteBasedOnDirection(RobotDirection currentDirection, Coordinate oldCoordinate) {
-  switch (currentDirection) {
-  case RobotDirection::LEFT:
-    return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
-  case RobotDirection::UP:
-    return Coordinate(oldCoordinate.x, oldCoordinate.y -1);
-  case RobotDirection::RIGHT:
-    return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
-  case RobotDirection::DOWN:
-    return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
-  default:
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  }
-}
-
-static Coordinate calculateNewCoordianteBasedOnDirectionAndTurnIndex(RobotDirection currentDirection, Coordinate oldCoordinate, uint8_t clockwiseTurnIndex) {
-  switch (currentDirection) {
-  case RobotDirection::LEFT:
-    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
-      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
-      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
-    }
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  case RobotDirection::UP:
-    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
-      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
-      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
-    }
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  case RobotDirection::RIGHT:
-    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
-      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
-      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
-    }
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  case RobotDirection::DOWN:
-    if (clockwiseTurnIndex == CLOCKWISE_LEFT_INDEX) {
-      return Coordinate(oldCoordinate.x + 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_FORWARD_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y + 1);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_RIGHT_INDEX) {
-      return Coordinate(oldCoordinate.x - 1, oldCoordinate.y);
-    }
-    if (clockwiseTurnIndex == CLOCKWISE_BEHIND_INDEX) {
-      return Coordinate(oldCoordinate.x, oldCoordinate.y - 1);
-    }
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  default:
-    return Coordinate(oldCoordinate.x, oldCoordinate.y);
-  }
 }
 
 std::vector<Coordinate> RoboCleanerExternalBridge::getClockwiseCoordinatesAroundMe() {
@@ -226,7 +106,7 @@ void RoboCleanerExternalBridge::clean() {
     queryInitialState();
     publishUserAuthenticate(_sharedReferenceToSelf, userAuthenticatePublisher);
     // timer = create_wall_timer(1511ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
-    timer = create_wall_timer(223ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
+    timer = create_wall_timer(623ms, std::bind(&RoboCleanerExternalBridge::timerCallback, this));
 }
 
 bool isTileDirty(unsigned char tile)  {
@@ -267,11 +147,7 @@ bool nothingLeftToExplore(const MapGraph& map) {
 }
 
 void RoboCleanerExternalBridge::timerCallback() {
-    // if ((tickCounter++) % 10 == 0) {
-    //   LOG("---------------- [SLEEPING] ----------------");
-    //   std::this_thread::sleep_for(1000ms);
-    // }
-    // std::lock_guard<std::recursive_mutex> l{actionLock};
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     waitForAction(moveActionClient, ROBOT_MOVE_ACTION);
     LOG("tick map");
     LOG("%s", coordinate_remapper::graphToMatrix(map).toString().c_str());
@@ -373,67 +249,27 @@ void RoboCleanerExternalBridge::timerCallback() {
         }
 
         // Only one dirty tile left, we need to "scrub" it
-        LOG("PRE SPOT");
+        if (shouldRecharge()) {
+          shortestPathWalker = route_planner::calculateRouteToCharingStation(map, robotState.currentNode->getCoordinate());
+          isWalkingTowardsChargingStation = true;
+          break;
+        }
+
         if (onlyOneSpotLeftAndImOnIt()) {
-          const auto coordinatesAroundMe = getClockwiseCoordinatesAroundMe();
-          const auto inFrontOfMeNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
-          if (inFrontOfMeNode && (*inFrontOfMeNode)->getBlockType() == '0') {
-            std::vector<Coordinate> scrubPath{};
-            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
-              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
-              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
-            }
-            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
-            break;
-          }
-
-          const auto rightNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
-          if (rightNode && (*rightNode)->getBlockType() == '0') {
-            std::vector<Coordinate> scrubPath{};
-            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
-              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
-              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
-            }
-            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
-            break;
-          }
-
-          const auto leftNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
-          if (leftNode && (*leftNode)->getBlockType() == '0') {
-            std::vector<Coordinate> scrubPath{};
-            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
-              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
-              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
-            }
-            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
-            break;
-          }
-
-          const auto behindNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
-          if (behindNode && (*behindNode)->getBlockType() == '0') {
-            std::vector<Coordinate> scrubPath{};
-            for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
-              scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
-              scrubPath.emplace_back(robotState.currentNode->getCoordinate());
-            }
-            shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
-            break;
-          }
+          scrubLastSpot();
+          break;
         }
 
+        if (shouldRecharge()) {
+          shortestPathWalker = route_planner::calculateRouteToCharingStation(map, robotState.currentNode->getCoordinate());
+          isWalkingTowardsChargingStation = true;
+          break;
+        }
+
+        // Everything around me is either clean or a collision => go to closest known unexplored or dirty coordinate
         LOG("couldn't go in any direction, resorting to route planner");
-        // Most places around us have been visited; need to go somewhere unknown
         shortestPathWalker = route_planner::calculateRouteToClosestUnexploredCoordiante(map, robotState.currentNode->getCoordinate());
-        while (!shortestPathWalker.isValid()) {
-          LOG("trying a different shortest path");
-          LOG("%s", robotState.toString().c_str());
-          LOG("[[[[]]]]]");
-          shortestPathWalker = route_planner::calculateRouteToClosestUnexploredCoordiante(map, robotState.currentNode->getCoordinate());
-        }
         LOG("shortest path set");
-        // Navigate to closest unvisited coordinate
-        // Remap discovered coordinates using top left corner into a matrix so that the shortest path algorithm can be used
-        // then do a reverse mapping into the original coordinate system and naviate to the closest uncleaned node
       }
       break;
     case StateMachine::TURNING_RIGHT:
@@ -528,7 +364,7 @@ void RoboCleanerExternalBridge::queryInitialState() {
 }
 
 void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
-    // std::lock_guard<std::recursive_mutex> l{actionLock};
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     if (isActionRunning) {
       LOG("can't issue move order because action is running");
       return;
@@ -554,7 +390,7 @@ void RoboCleanerExternalBridge::issueMoveOrder(int8_t moveType) {
 }
 
 void RoboCleanerExternalBridge::moveGoalResponseCallback(std::shared_future<GoalHandleRobotMove::SharedPtr> future) {
-    // std::lock_guard<std::recursive_mutex> l{actionLock};
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     auto goal_handle = future.get();
     if (!goal_handle) {
       LOGR("move goal was rejected by server");
@@ -584,7 +420,7 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
     [[maybe_unused]] const GoalHandleRobotMove::SharedPtr, 
     const std::shared_ptr<const RobotMove::Feedback> feedback
 ) {
-  // std::lock_guard<std::recursive_mutex> l{actionLock};
+  std::lock_guard<std::recursive_mutex> l{actionLock};
   if (isApproachingCollision(feedback->approaching_field_marker)) {
     moveActionClient->async_cancel_all_goals();
     LOG("cancelling goal due to approaching collision %c", feedback->approaching_field_marker);
@@ -607,7 +443,7 @@ void RoboCleanerExternalBridge::moveGoalFeedbackCallback(
 }
 
 void RoboCleanerExternalBridge::moveGoalResultCallback(const GoalHandleRobotMove::WrappedResult & result) {
-    // std::lock_guard<std::recursive_mutex> l{actionLock};
+    std::lock_guard<std::recursive_mutex> l{actionLock};
     LOG("move goal result callback");
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
@@ -701,6 +537,54 @@ void RoboCleanerExternalBridge::updateBatteryStatus() {
   this->robotState.maxMovesOnFullEnergy = result->battery_status.max_moves_on_full_energy;
 }
 
+void RoboCleanerExternalBridge::scrubLastSpot() {
+  const auto coordinatesAroundMe = getClockwiseCoordinatesAroundMe();
+  const auto inFrontOfMeNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
+  if (inFrontOfMeNode && (*inFrontOfMeNode)->getBlockType() == '0') {
+    std::vector<Coordinate> scrubPath{};
+    for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+      scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_FORWARD_INDEX]);
+      scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+    }
+    shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+    return;
+  }
+
+  const auto rightNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
+  if (rightNode && (*rightNode)->getBlockType() == '0') {
+    std::vector<Coordinate> scrubPath{};
+    for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+      scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_RIGHT_INDEX]);
+      scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+    }
+    shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+    return;
+  }
+
+  const auto leftNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
+  if (leftNode && (*leftNode)->getBlockType() == '0') {
+    std::vector<Coordinate> scrubPath{};
+    for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+      scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_LEFT_INDEX]);
+      scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+    }
+    shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+    return;
+  }
+
+  const auto behindNode = map.getNodeAtCoordinate(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
+  if (behindNode && (*behindNode)->getBlockType() == '0') {
+    std::vector<Coordinate> scrubPath{};
+    for (int scrubTimes = 0; scrubTimes < robotState.currentNode->getBlockType() - 48; scrubTimes++) {
+      scrubPath.emplace_back(coordinatesAroundMe[CLOCKWISE_BEHIND_INDEX]);
+      scrubPath.emplace_back(robotState.currentNode->getCoordinate());
+    }
+    shortestPathWalker = ShortestPathWalker(std::move(scrubPath));
+    return;
+  }
+}
+
+// --- BATTERY
 void RoboCleanerExternalBridge::chargeBatteryToFull() {
   LOG("charging battery to full");
   std::lock_guard<std::mutex>(this->batteryLock);
@@ -720,7 +604,7 @@ void RoboCleanerExternalBridge::chargeBatteryToFull() {
 
 bool RoboCleanerExternalBridge::shouldRecharge() {
   std::lock_guard<std::mutex>(this->batteryLock);
-  return static_cast<float>(robotState.movesLeft) / static_cast<float>(robotState.maxMovesOnFullEnergy) < 0.55;
+  return static_cast<float>(robotState.movesLeft) / static_cast<float>(robotState.maxMovesOnFullEnergy) < 0.52;
 }
 
 bool RoboCleanerExternalBridge::isChargeFull() {

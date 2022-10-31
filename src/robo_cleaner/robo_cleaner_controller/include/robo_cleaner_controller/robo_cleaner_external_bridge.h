@@ -63,5 +63,6 @@ private:
   void goForward();
   void turnAround();
   bool goToCoordinate(const Coordinate& coord);
+  void scrubLastSpot();
 };
 #endif

@@ -49,6 +49,8 @@ add_executable(
     ${_SRC_DIR}/route_planner.cpp
     ${_INC_DIR}/shortest_path_walker.h
     ${_SRC_DIR}/shortest_path_walker.cpp
+    ${_INC_DIR}/direction_coordinate_calculator.h
+    ${_SRC_DIR}/direction_coordinate_calculator.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
