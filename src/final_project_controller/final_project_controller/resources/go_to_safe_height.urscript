@@ -1,0 +1,9 @@
+def goToSafeHeight():
+    global currentPose = get_actual_tcp_pose()
+    global target_pose = p[0.521, 0.106, 0.100, 0, 3.14, 0]
+    movel(p[0.521, 0.106, 0.100, 0, 3.14, 0], a=1.0, v=0.8)
+
+  #   global pose_wrt_tool = p[0,0,0.1,0,0 , 1.57]
+  #   global pose_wrt_base = pose_trans(get_forward_kin(), pose_wrt_tool)
+  #   movel( pose_wrt_base , a=1.2, v=0.25)
+end

@@ -24,10 +24,14 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(ur_control_gui REQUIRED)
 find_package(urscript_interfaces REQUIRED)
 find_package(urscript_common REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # TODO
 # uncomment the following section in order to fill in
@@ -51,6 +55,8 @@ add_executable(
     ${_SRC_DIR}/joint_state_subscriber.cpp
     ${_INC_DIR}/joint_rotations.h
     ${_SRC_DIR}/joint_rotations.cpp
+    ${_INC_DIR}/angle_axis_provider.h
+    ${_SRC_DIR}/angle_axis_provider.cpp
 )
 
 target_include_directories(final_project_controller PUBLIC
@@ -64,7 +70,11 @@ ament_target_dependencies(
         rclcpp
         ament_index_cpp
         std_msgs
+        sensor_msgs
         urscript_interfaces
+        tf2
+        tf2_ros
+        tf2_geometry_msgs
 )
 
 target_link_libraries(

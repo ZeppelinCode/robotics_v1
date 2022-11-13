@@ -1,0 +1,3 @@
+def go_to_home():
+	movel(p[{}, {}, {}, {}, {}, {}])
+end

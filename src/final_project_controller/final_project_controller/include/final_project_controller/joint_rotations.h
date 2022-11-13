@@ -19,6 +19,7 @@ struct JointRotations {
     representation << "JointRotations(" 
                    << "shoulerLift{" << shoulerLift << "}, " 
                    << "shoulerPan{" << shoulerPan << "}, " 
+                   << "elbow{" << elbow << "}, " 
                    << "wrist1{" << wrist1 << "}, " 
                    << "wrist2{" << wrist2 << "}, " 
                    << "wrist3{" << wrist3 << "})" ;

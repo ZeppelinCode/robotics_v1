@@ -1,13 +1,12 @@
 #include "final_project_controller/joint_state_subscriber.h"
+#include <iostream>
 
 
 JointStateSubscriber::JointStateSubscriber(std::shared_ptr<rclcpp::Node> node) : node{node} {
-    using std::placeholders::_1;
-
     _subscriber = node->create_subscription<sensor_msgs::msg::JointState>(
         "joint_states",
         10,
-        std::bind(&JointStateSubscriber::joint_state_callback, this, _1)
+        std::bind(&JointStateSubscriber::joint_state_callback, this, std::placeholders::_1)
         );
 }
 
@@ -19,8 +18,6 @@ void JointStateSubscriber::joint_state_callback(std::shared_ptr<sensor_msgs::msg
 // - wrist_1_joint
 // - wrist_2_joint
 // - wrist_3_joint
-    // auto jointNames = msg->name;
-    auto jointPositions = msg->position;
     for (size_t i = 0; i < msg->name.size(); i++) {
         auto jointName = msg->name[i];
         if (jointName == "elbow_joint") {
@@ -48,6 +45,7 @@ void JointStateSubscriber::joint_state_callback(std::shared_ptr<sensor_msgs::msg
             continue;
         }
     }
+    // std::cout << "joint state update " << _currentJointState.str() << std::endl;
 }
 
 
