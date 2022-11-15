@@ -1,8 +1,6 @@
-gripper enabled
-offset between boxes
-sleep duration
-hover above box
-hover above for picking (safety clearance above all possible boxes)
-
-
-run-ursim
+0: gripper enabled
+1: offset between boxes
+2: sleep duration
+3: hover above box
+4: hover above for picking (safety clearance above all possible boxes)
+5: target height

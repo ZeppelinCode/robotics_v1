@@ -1,5 +1,5 @@
 def Gripper():
-    set_tcp(p[0.0,0.0,0.1755,0.0,0.0,0.0])
+    set_tcp(p[0.0,0.0,0.248,0.0,0.0,0.0])
     set_payload(1.0,[-3.0E-4,4.0E-4,0.0785])
     step_count_c1ea570d_597a_4e27_b1f2_f1204aefbef2 = 0
     thread Step_Counter_Thread_c0f00319_af92_46b1_ade4_4c060a86bf18():
@@ -2330,54 +2330,10 @@ def Gripper():
     # end: URCap Installation Node
     
     
-    ##########################################################################################
-    #####Commands below will be executed, most common commands are listed below          #####
-    #####Please refer to the instruction manual for a complete list of available commands#####
-    #####remove the "#" sign before a command to execute the command                     #####
-    #####Or add the "#" sign to ignore the comman                                        #####
-    ##### Used as is, the gripper will open and close                                    #####
-    ##########################################################################################
-    
-    
-  #######################################  
-  ##### Here are the vacuum commands#####
-  #######################################
-    
-    
-   #####Used as is, the following command will use default value
-  #  rq_vacuum_grip ()
-  #####Following command allows the Vacuum Gripper to pick an object. The default values are :advanced_mode=False, maximum_vacuum=60, minimum_vacuum=40, timeout_ms=3000, wait_for_object_detected=True, gripper_socket=" 1"
-  #  rq_vacuum_grip (  False  ,60,40,3000,  True  ,1)
-  #  rq_vacuum_release ()
-  #####Following command allows the Vacuum Gripper to grip an object. The default values are : advanced_mode=False, shutoff_distance_cm=5, wait_for_object_released=True, gripper_socket=" 1"
-  #  rq_vacuum_release (  False  ,5,  True  ,1)
-  #  rq_is_vacuum_obj_detected ()
-    
-  ##########################################
-  #####  Here are the Grippers commands#####
-  ##########################################
-    
-  #  rq_reset ()
-  #  rq_activate_and_wait ()
-  #  rq_set_speed_norm (100)
-  #  rq_set_force_norm (100)
-  #  rq_open_and_wait ()
-  #  rq_close()
-  #  rq_close_and_wait ()
-  #  rq_open()
-  #  rq_is_object_detected ()
-  #  rq_move_and_wait_norm (75)
-  #  rq_current_pos_norm ()
-  #  rq_current_pos_mm ()
-  #  rq_current_pos_inches ()
-  #  rq_move_and_wait_mm (25)
-  #  rq_current_pos_inches (1)
-    
-    
     rq_activate_and_wait ()
     rq_set_speed_norm (100)
     
     # open
     rq_open_and_wait ()
     
-  end
+end

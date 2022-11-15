@@ -17,6 +17,7 @@ double OFFSET_SIZE_M{};
 int64_t SLEEP_MILLIS{};
 double HOVER_ABOVE_BOX{};
 std::string HOVER_ABOVE_PICKING_CLEARANCE{};
+double TARGET_HEIGHT{};
 // TODO gripper should be a global here
 
 void loadConfig() {
@@ -27,6 +28,7 @@ void loadConfig() {
   SLEEP_MILLIS = std::stoi(lines[2]);
   HOVER_ABOVE_BOX = std::stod(lines[3]);
   HOVER_ABOVE_PICKING_CLEARANCE = lines[4];
+  TARGET_HEIGHT = std::stod(lines[5]);
 
   std::cout << "config read:" << std::endl;
   std::cout << "isGripperEnabled: " << isGripperEnabled << std::endl;
@@ -34,6 +36,7 @@ void loadConfig() {
   std::cout << "sleep millis: " << SLEEP_MILLIS << std::endl;
   std::cout << "hover above box meters: " << HOVER_ABOVE_BOX << std::endl;
   std::cout << "hover above picking clearance: " << HOVER_ABOVE_PICKING_CLEARANCE << std::endl;
+  std::cout << "target height: " << TARGET_HEIGHT << std::endl;
 }
 
 void openGripper(const std::string& openGripperScript, rclcpp::Publisher<std_msgs::msg::String>::SharedPtr urScriptPublisher) {
@@ -81,7 +84,7 @@ std::string hoverAbove(BoxPosition boxPosition) {
   acc << "\tmovel(p[" 
       << boxPosition.x
       << ", " << boxPosition.y 
-      << ", "<< boxPosition.z + HOVER_ABOVE_BOX // 0.15
+      << ", 0.500"//boxPosition.z + HOVER_ABOVE_BOX // 0.15
       << ", " << boxPosition.rx
       << ", " << boxPosition.ry
       << ", " << boxPosition.rz
@@ -160,7 +163,7 @@ void placeBox(
     openGripper(openGripperScript, urScriptPublisher);
     std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS / 2));
 
-    message.data = hoverAboveForPicking(position); // needed because all picking boxes are lower than 0.22
+    message.data = hoverAbove(position); // needed because all picking boxes are lower than 0.22
     std::cout << message.data << std::endl;
     urScriptPublisher->publish(message); 
 }
@@ -244,28 +247,28 @@ int main(int32_t argc, char *argv[]) {
     std::vector<std::function<void()>> functions;
     // First stair
     functions.emplace_back([&] { grabBox(boxPositions[9], closeGripperScript, urScriptPublisher);  }); // Grip before ascent
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, -0.05, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     // Second stair
     functions.emplace_back([&] { grabBox(boxPositions[0], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), -0.05, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[1], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), -0.05 + 0.115, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     // Third stair
     functions.emplace_back([&] { grabBox(boxPositions[10], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), -0.05, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[2], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), -0.05 + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[3], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), -0.05 + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     // Fourth stair
     functions.emplace_back([&] { grabBox(boxPositions[11], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), -0.05, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[4], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), -0.05 + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[5], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), -0.05 + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[6], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), -0.05 + offsetBy(3), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(3), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
     executeActionsInSuccession(functions);
 
     rclcpp::shutdown();
