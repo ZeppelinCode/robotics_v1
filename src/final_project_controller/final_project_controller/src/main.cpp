@@ -247,12 +247,12 @@ int main(int32_t argc, char *argv[]) {
     std::vector<std::function<void()>> functions;
     // First stair
     functions.emplace_back([&] { grabBox(boxPositions[9], closeGripperScript, urScriptPublisher);  }); // Grip before ascent
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, TARGET_HEIGHT, boxPositions[9].rx, boxPositions[9].ry, boxPositions[9].rz), openGripperScript, urScriptPublisher);  });
     // Second stair
     functions.emplace_back([&] { grabBox(boxPositions[0], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, boxPositions[0].rx, boxPositions[0].ry, boxPositions[0].rz), openGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { grabBox(boxPositions[1], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, boxPositions[1].rx, boxPositions[1].ry, boxPositions[1].rz), openGripperScript, urScriptPublisher);  });
     // Third stair
     functions.emplace_back([&] { grabBox(boxPositions[10], closeGripperScript, urScriptPublisher);  });
     functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
