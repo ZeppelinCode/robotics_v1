@@ -74,7 +74,7 @@ std::string goLinearlyTo(BoxPosition boxPosition) {
       << ", " << boxPosition.ry
       << ", " << boxPosition.rz
       << "], a=1.0, v=0.8)\n";
-  acc << "end";
+  acc << "end\n\n\n";
   return acc.str();
 }
 
@@ -89,7 +89,7 @@ std::string hoverAbove(BoxPosition boxPosition) {
       << ", " << boxPosition.ry
       << ", " << boxPosition.rz
       << "], a=1.0, v=0.8)\n";
-  acc << "end";
+  acc << "end\n\n\n";
   return acc.str();
 }
 
@@ -104,68 +104,87 @@ std::string hoverAboveForPicking(BoxPosition boxPosition) {
       << ", " << boxPosition.ry
       << ", " << boxPosition.rz
       << "], a=1.0, v=0.8)\n";
-  acc << "end";
+  acc << "end\n\n\n";
   return acc.str();
 }
 
 void executeActionsInSuccession(const std::vector<std::function<void()>>& functs) {
   for (const auto& func: functs) {
     func();
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
   }
+}
+
+// void grabBox(
+//   const BoxPosition& position, 
+//   const std::string& closeGripperScript, 
+//   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr urScriptPublisher
+// ) {
+//     std::cout << "going to box " << position.str() << std::endl;
+//     std_msgs::msg::String message{};
+//     message.data = hoverAbove(position);
+//     std::cout << message.data << std::endl;
+//     urScriptPublisher->publish(message); 
+//     std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+
+//     message.data = goLinearlyTo(position);
+//     std::cout << message.data << std::endl;
+//     urScriptPublisher->publish(message); 
+//     std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+
+//     closeGripper(closeGripperScript, urScriptPublisher);
+//     std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS / 2));
+
+//     message.data = hoverAbove(position); // might need to be "hover above expected target"
+//     std::cout << message.data << std::endl;
+//     urScriptPublisher->publish(message); 
+// }
+
+void executeServiceRequest(
+  rclcpp::Node::SharedPtr node,
+  rclcpp::Client<urscript_interfaces::srv::UrScript>::SharedPtr client,
+  const std::string& scriptToExecute
+) {
+  using UrScriptSrv = urscript_interfaces::srv::UrScript;
+  auto request = std::make_shared<UrScriptSrv::Request>();
+  request->data = scriptToExecute;
+  auto result = client->async_send_request(request);
+  std::cout << "request sent, waiting" << std::endl;
+  std::cout << scriptToExecute << std::endl;
+  if (rclcpp::spin_until_future_complete(node, result) != rclcpp::FutureReturnCode::SUCCESS) {
+      RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to move service with command forward");
+  }
+  auto response = result.get();
+  std::cout << "success: " << response->success << ", error: " << response->error_reason << std::endl;
+  std::cout << "----" << std::endl;
 }
 
 void grabBox(
   const BoxPosition& position, 
-  const std::string& closeGripperScript, 
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr urScriptPublisher
+  [[maybe_unused]]const std::string& closeGripperScript, 
+  rclcpp::Node::SharedPtr node,
+  rclcpp::Client<urscript_interfaces::srv::UrScript>::SharedPtr client 
 ) {
-    std::cout << "going to box " << position.str() << std::endl;
-    std_msgs::msg::String message{};
-    message.data = hoverAbove(position);
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+    executeServiceRequest(node, client, hoverAbove(position));
+    executeServiceRequest(node, client, goLinearlyTo(position));
 
-    // openGripper(openGripperScript, urScriptPublisher);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS / 2));
+    // TODO close gripper
+    // closeGripper(closeGripperScript, urScriptPublisher);
 
-    message.data = goLinearlyTo(position);
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-
-    closeGripper(closeGripperScript, urScriptPublisher);
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS / 2));
-
-    message.data = hoverAbove(position); // might need to be "hover above expected target"
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
+    executeServiceRequest(node, client, hoverAbove(position));
 }
 
 void placeBox(
-  const BoxPosition& position,
-  const std::string& openGripperScript,
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr urScriptPublisher
+  const BoxPosition& position, 
+  [[maybe_unused]]const std::string& openGripperScript, 
+  rclcpp::Node::SharedPtr node,
+  rclcpp::Client<urscript_interfaces::srv::UrScript>::SharedPtr client 
 ) {
-    std::cout << "going to destination " << position.str() << std::endl;
-    std_msgs::msg::String message{};
-    message.data = hoverAbove(position);
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-
-    message.data = goLinearlyTo(position);
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-
-    openGripper(openGripperScript, urScriptPublisher);
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS / 2));
-
-    message.data = hoverAbove(position); // needed because all picking boxes are lower than 0.22
-    std::cout << message.data << std::endl;
-    urScriptPublisher->publish(message); 
+  executeServiceRequest(node, client, hoverAbove(position));
+  executeServiceRequest(node, client, goLinearlyTo(position));
+  // TODO open gripper
+  // openGripper(openGripperScript, urScriptPublisher);
+  executeServiceRequest(node, client, hoverAbove(position));
 }
 
 double offsetBy(int n) {
@@ -192,90 +211,37 @@ int main(int32_t argc, char *argv[]) {
 
 
     using UrScriptSrv = urscript_interfaces::srv::UrScript;
-    // TODO topic
-    using String = std_msgs::msg::String;
+    // // TODO topic
     std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("final_project_controller_node");
     auto urScriptClient = node->create_client<UrScriptSrv>("urscript_service", rmw_qos_profile_services_default);
 
-    auto jointStateSubscriber = JointStateSubscriber(node);
-    auto angleAxisProvider = AngleAxisProvider(node);
-    // TODO this angle axis thing needs to be sorted out
-
-    // std::cout << "getting angle axis" << std::endl;
-    // auto aa = angleAxisProvider.getAngleAxis();
-    // std::cout << "x: " << aa.x << ", y: " << aa.y << ", z: " << aa.z << std::endl;
-    // std::cout << "angle axis received" << std::endl;
 
 
-    // TODO topic
-    constexpr auto queueSize = 10;
-    const rclcpp::QoS qos(queueSize);
-    auto urScriptPublisher = node->create_publisher<String>("urscript", qos);
+    // auto jointStateSubscriber = JointStateSubscriber(node);
+    // auto angleAxisProvider = AngleAxisProvider(node);
+    // // TODO this angle axis thing needs to be sorted out
+
+    // // std::cout << "getting angle axis" << std::endl;
+    // // auto aa = angleAxisProvider.getAngleAxis();
+    // // std::cout << "x: " << aa.x << ", y: " << aa.y << ", z: " << aa.z << std::endl;
+    // // std::cout << "angle axis received" << std::endl;
+
+
+    // // TODO topic
+    // constexpr auto queueSize = 10;
+    // const rclcpp::QoS qos(queueSize);
+    // auto urScriptPublisher = node->create_publisher<String>("urscript", qos);
 
     const auto leanForwardScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/ur_dev/ur_control_gui/resources/scripts/command03.script");
     const auto goToHome = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/go_to_home.urscript");
     const auto openGripperScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/open_gripper.urscript");
     const auto closeGripperScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/close_gripper.urscript");
-    // const auto genericMovelScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/generic_movel.urscript");
-    // TODO
+    // // const auto genericMovelScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/generic_movel.urscript");
+    // // TODO
 
-
-    // TODO topic
-    std::cout << "going home" << std::endl;
-    String message{};
-    message.data = goToHome;
-    urScriptPublisher->publish(message);
-    std::cout << "sleeping" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-    std::cout << "going home 2" << std::endl;
-    String message2{};
-    message2.data = goToHome;
-    urScriptPublisher->publish(message2);
-    std::cout << "sleeping" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-
-    openGripper(openGripperScript, urScriptPublisher);
-    std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
-
-    // (0, -0.87, -0.05)
-    // (0, -0.755, -0.05)
-    // (0, -0.755, 0.065)
-    // (0, -0.64, -0.05)
-    // (0, -0.64, 0.065)
-    // (0, -0.64, 0.18)
-    // 10, 1, 2, 11, 3, 4, 12, 5, 6, 13
-    std::vector<std::function<void()>> functions;
-    // First stair
-    functions.emplace_back([&] { grabBox(boxPositions[9], closeGripperScript, urScriptPublisher);  }); // Grip before ascent
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, TARGET_HEIGHT, boxPositions[9].rx, boxPositions[9].ry, boxPositions[9].rz), openGripperScript, urScriptPublisher);  });
-    // Second stair
-    functions.emplace_back([&] { grabBox(boxPositions[0], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, boxPositions[0].rx, boxPositions[0].ry, boxPositions[0].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[1], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, boxPositions[1].rx, boxPositions[1].ry, boxPositions[1].rz), openGripperScript, urScriptPublisher);  });
-    // Third stair
-    functions.emplace_back([&] { grabBox(boxPositions[10], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[2], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[3], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    // Fourth stair
-    functions.emplace_back([&] { grabBox(boxPositions[11], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[4], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[5], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { grabBox(boxPositions[6], closeGripperScript, urScriptPublisher);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(3), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, urScriptPublisher);  });
-    executeActionsInSuccession(functions);
-
-    rclcpp::shutdown();
-    return 0;
-}
-
-    // while (!urScriptClient->wait_for_service(std::chrono::seconds(1))) {
+    // executeServiceRequest(node, urScriptClient, leanForwardScript);
+    // executeServiceRequest(node, urScriptClient, goToHome);
+    //         while (!urScriptClient->wait_for_service(std::chrono::seconds(1))) {
     //   if (!rclcpp::ok()) {
     //     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
     //     return EXIT_FAILURE;
@@ -284,15 +250,74 @@ int main(int32_t argc, char *argv[]) {
     // }
     // std::cout << "service is up" << std::endl;
     // std::cout << "building request" << std::endl;
-    // auto request = std::make_shared<UrScriptSrv::Request>();
-    // request->data = leanForwardScript;
-    // std::cout << "sending request" << std::endl;
-    // std::cout << request->data << std::endl;
-    // std::cout <<  "---" << std::endl;
-    // auto result = urScriptClient->async_send_request(request);
-    // std::cout << "request sent, waiting" << std::endl;
-    // if (rclcpp::spin_until_future_complete(node, result) != rclcpp::FutureReturnCode::SUCCESS) {
-    //     RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to move service with command forward");
+
+    // for (const auto& boxPosition : boxPositions) {
+    //   auto request = std::make_shared<UrScriptSrv::Request>();
+    //   request->data = goLinearlyTo(boxPosition);
+    //   auto result = urScriptClient->async_send_request(request);
+    //   std::cout << "request sent, waiting " << boxPosition.str() << std::endl;
+    //   std::cout << request->data << std::endl;
+    //   if (rclcpp::spin_until_future_complete(node, result) != rclcpp::FutureReturnCode::SUCCESS) {
+    //       RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to move service with command forward");
+    //   }
+    //   auto response = result.get();
+    //   std::cout << "success: " << response->success << ", error: " << response->error_reason << std::endl;
     // }
-    // auto response = result.get();
-    // std::cout << "success: " << response->success << ", error: " << response->error_reason << std::endl;
+   
+
+
+    // // TODO topic
+    // std::cout << "going home" << std::endl;
+    // String message{};
+    // message.data = goToHome;
+    // urScriptPublisher->publish(message);
+    // std::cout << "sleeping" << std::endl;
+    // std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+    // std::cout << "going home 2" << std::endl;
+    // String message2{};
+    // message2.data = goToHome;
+    // urScriptPublisher->publish(message2);
+    // std::cout << "sleeping" << std::endl;
+    // std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+
+    // openGripper(openGripperScript, urScriptPublisher);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_MILLIS));
+
+    // // (0, -0.87, -0.05)
+    // // (0, -0.755, -0.05)
+    // // (0, -0.755, 0.065)
+    // // (0, -0.64, -0.05)
+    // // (0, -0.64, 0.065)
+    // // (0, -0.64, 0.18)
+    // // 10, 1, 2, 11, 3, 4, 12, 5, 6, 13
+    std::vector<std::function<void()>> functions;
+    // First stair
+    functions.emplace_back([&] { grabBox(boxPositions[9], closeGripperScript, node, urScriptClient);  }); // Grip before ascent
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67, TARGET_HEIGHT, boxPositions[9].rx, boxPositions[9].ry, boxPositions[9].rz), openGripperScript, node, urScriptClient);  });
+    // Second stair
+    functions.emplace_back([&] { grabBox(boxPositions[0], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, boxPositions[0].rx, boxPositions[0].ry, boxPositions[0].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[1], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, boxPositions[1].rx, boxPositions[1].ry, boxPositions[1].rz), openGripperScript, node, urScriptClient);  });
+    // Third stair
+    functions.emplace_back([&] { grabBox(boxPositions[10], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[2], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[3], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    // Fourth stair
+    functions.emplace_back([&] { grabBox(boxPositions[11], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT, boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[4], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(1), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[5], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(2), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[6], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(3), boxPositions[10].rx, boxPositions[10].ry, boxPositions[10].rz), openGripperScript, node, urScriptClient);  });
+    executeActionsInSuccession(functions);
+
+    rclcpp::shutdown();
+    return 0;
+}
+
