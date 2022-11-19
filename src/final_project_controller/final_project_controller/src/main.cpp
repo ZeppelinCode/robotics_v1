@@ -84,7 +84,7 @@ std::string hoverAbove(BoxPosition boxPosition) {
   acc << "\tmovel(p[" 
       << boxPosition.x
       << ", " << boxPosition.y 
-      << ", 0.500"//boxPosition.z + HOVER_ABOVE_BOX // 0.15
+      << ", " << boxPosition.z + HOVER_ABOVE_BOX // 0.15?
       << ", " << boxPosition.rx
       << ", " << boxPosition.ry
       << ", " << boxPosition.rz
@@ -187,26 +187,11 @@ int main(int32_t argc, char *argv[]) {
 
 
     using UrScriptSrv = urscript_interfaces::srv::UrScript;
-    // // TODO topic
     std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("final_project_controller_node");
     auto urScriptClient = node->create_client<UrScriptSrv>("urscript_service", rmw_qos_profile_services_default);
 
 
 
-    // auto jointStateSubscriber = JointStateSubscriber(node);
-    // auto angleAxisProvider = AngleAxisProvider(node);
-    // // TODO this angle axis thing needs to be sorted out
-
-    // // std::cout << "getting angle axis" << std::endl;
-    // // auto aa = angleAxisProvider.getAngleAxis();
-    // // std::cout << "x: " << aa.x << ", y: " << aa.y << ", z: " << aa.z << std::endl;
-    // // std::cout << "angle axis received" << std::endl;
-
-
-    // // TODO topic
-    // constexpr auto queueSize = 10;
-    // const rclcpp::QoS qos(queueSize);
-    // auto urScriptPublisher = node->create_publisher<String>("urscript", qos);
 
     const auto leanForwardScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/ur_dev/ur_control_gui/resources/scripts/command03.script");
     const auto goToHome = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/go_to_home.urscript");
@@ -274,7 +259,7 @@ int main(int32_t argc, char *argv[]) {
     functions.emplace_back([&] { grabBox(boxPositions[0], closeGripperScript, node, urScriptClient);  });
     functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT, 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
     functions.emplace_back([&] { grabBox(boxPositions[1], closeGripperScript, node, urScriptClient);  });
-    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + 0.115, 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(1), TARGET_HEIGHT + offsetBy(1), 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
     // Third stair
     functions.emplace_back([&] { grabBox(boxPositions[10], closeGripperScript, node, urScriptClient);  });
     functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(2), TARGET_HEIGHT, 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
@@ -291,6 +276,13 @@ int main(int32_t argc, char *argv[]) {
     functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(2), 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
     functions.emplace_back([&] { grabBox(boxPositions[6], closeGripperScript, node, urScriptClient);  });
     functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(3), 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
+
+    // 8, 6, 14, 9
+    // Final 4 cubes
+    functions.emplace_back([&] { grabBox(boxPositions[7], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(4), 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { grabBox(boxPositions[5], closeGripperScript, node, urScriptClient);  });
+    functions.emplace_back([&] { placeBox(BoxPosition(0, -0.67 + offsetBy(3), TARGET_HEIGHT + offsetBy(5), 0, 3.14, 0), openGripperScript, node, urScriptClient);  });
     executeActionsInSuccession(functions);
 
     rclcpp::shutdown();
