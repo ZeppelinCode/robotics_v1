@@ -4,3 +4,4 @@
 3: hover above box
 4: hover above for picking (safety clearance above all possible boxes)
 5: target height
+6: target y
