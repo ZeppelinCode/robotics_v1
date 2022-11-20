@@ -32,6 +32,7 @@ private:
   void executeActionsInSuccession(const std::vector<std::function<void()>>& functs)const;
   std::string hoverAbove(const BoxPosition& boxPosition)const;
   std::string hoverAboveYMargin(const BoxPosition& boxPosition)const;
+  std::string hoverAboveYMarginOnEntry(const BoxPosition& boxPosition)const;
   double offsetBy(int n)const;
 };
 #endif

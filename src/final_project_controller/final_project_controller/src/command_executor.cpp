@@ -49,6 +49,29 @@ std::string CommandExecutor::hoverAboveYMargin(const BoxPosition& boxPosition)co
   return acc.str();
 }
 
+std::string CommandExecutor::hoverAboveYMarginOnEntry(const BoxPosition& boxPosition)const {
+  std::stringstream acc;
+  acc << "def go_linearly_to():\n";
+  acc << "\tmovel(p[" 
+      << boxPosition.x
+      << ", " << boxPosition.y + configLoader->offsetBetweenBoxes
+      << ", " << std::max(configLoader->minimumHoverHeight, boxPosition.z + configLoader->hoverAboveBox) // 0.15
+      << ", " << boxPosition.rx
+      << ", " << boxPosition.ry
+      << ", " << boxPosition.rz
+      << "], a=1.0, v=0.8, r=0.03)\n";
+  acc << "\tmovel(p[" 
+      << boxPosition.x
+      << ", " << boxPosition.y
+      << ", " << std::max(configLoader->minimumHoverHeight, boxPosition.z + configLoader->hoverAboveBox) // 0.15
+      << ", " << boxPosition.rx
+      << ", " << boxPosition.ry
+      << ", " << boxPosition.rz
+      << "], a=1.0, v=0.8)\n";
+  acc << "end\n\n\n";
+  return acc.str();
+}
+
 CommandExecutor::CommandExecutor(
   rclcpp::Node::SharedPtr node,
   rclcpp::Client<urscript_interfaces::srv::UrScript>::SharedPtr client,
@@ -110,8 +133,8 @@ void CommandExecutor::grabBox(const BoxPosition& position)const {
 }
 
 void CommandExecutor::placeBox(const BoxPosition& position)const {
-  executeServiceRequest(hoverAboveYMargin(position));
-  executeServiceRequest(hoverAbove(position));
+  // executeServiceRequest(hoverAboveYMargin(position));
+  executeServiceRequest(hoverAboveYMarginOnEntry(position));
   executeServiceRequest(goLinearlyTo(position));
 
   openGripper();
