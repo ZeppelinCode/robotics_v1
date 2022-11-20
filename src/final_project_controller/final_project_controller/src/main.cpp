@@ -5,6 +5,9 @@
 #include "final_project_controller/config_loader.h"
 #include "final_project_controller/command_executor.h"
 
+// Path adjustments: Go home script inside main
+// Config loader constructor <- configs
+// Command executor constructor <- open/close gripper scripts
 int main(int32_t argc, char *argv[]) {
     rclcpp::InitOptions initOptions;
     initOptions.shutdown_on_sigint = true;
