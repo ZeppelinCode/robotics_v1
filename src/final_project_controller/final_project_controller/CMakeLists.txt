@@ -57,6 +57,11 @@ add_executable(
     ${_SRC_DIR}/joint_rotations.cpp
     ${_INC_DIR}/angle_axis_provider.h
     ${_SRC_DIR}/angle_axis_provider.cpp
+    ${_INC_DIR}/config_loader.h
+    ${_SRC_DIR}/config_loader.cpp
+    ${_INC_DIR}/json_parser.h
+    ${_INC_DIR}/command_executor.h
+    ${_SRC_DIR}/command_executor.cpp
 )
 
 target_include_directories(final_project_controller PUBLIC

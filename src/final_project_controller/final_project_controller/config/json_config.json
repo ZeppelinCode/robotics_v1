@@ -1,0 +1,18 @@
+{
+    "isGripperEnabled": false,
+    "offsetBetweenBoxes": 0.115,
+    "minimumHoverHeight": 0.32,
+    "hoverAboveBox": 0.15,
+    "targetX": 0,
+    "targetY": -0.785,
+    "targetZ": -0.057,
+    "easyBoxRotationX": 0,
+    "easyBoxRotationY": 3.14,
+    "easyBoxRotationZ": 0,
+    "fourthStairWeirdRotationX": 0.197,
+    "fourthStairWeirdRotationY": -2.206,
+    "fourthStairWeirdRotationZ": 1.829,
+    "finalOrientationX": 0.022,
+    "finalOrientationY": -2.758,
+    "finalOrientationZ": 2.493
+}
