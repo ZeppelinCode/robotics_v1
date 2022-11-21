@@ -54,7 +54,7 @@ std::string CommandExecutor::buildHoverAboveYMarginOnEntryMovel(const BoxPositio
   std::stringstream acc;
   acc << "movel(p[" 
     << boxPosition.x
-    << ", " << boxPosition.y + configLoader->offsetBetweenBoxes
+    << ", " << boxPosition.y + configLoader->offsetBetweenBoxes + configLoader->additionalBackAwayYSafety
     << ", " << std::max(configLoader->minimumHoverHeight, boxPosition.z + configLoader->hoverAboveBox) // 0.15
     << ", " << boxPosition.rx
     << ", " << boxPosition.ry
@@ -178,32 +178,49 @@ void CommandExecutor::executeActionsInSuccession(const std::vector<std::function
 
 void CommandExecutor::grabBox(const BoxPosition& position)const {
   auto commandBuilder = ScriptBuilder();
-  commandBuilder.beginWithDefaultHeader();
-  commandBuilder.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
-  commandBuilder.addCommand(buildMovelCommand(position));
+  commandBuilder.beginWithDefaultHeader()
+    .addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius))
+    .addCommand(buildMovelCommand(position));
   executeServiceRequest(commandBuilder.str());
 
-  if (configLoader->isGripperEnabled) {
-    closeGripper();
-  }
+  closeGripper();
   
+  if (configLoader->shouldAvoidBaseLocation) {
+    auto exitCommandBuilder = ScriptBuilder();
+    exitCommandBuilder
+      .beginWithDefaultHeader()
+      .addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius))
+      .addCommand(buildMovelCommand(BoxPosition(
+        configLoader->avoidBaseLocation.x,
+        configLoader->avoidBaseLocation.y,
+        configLoader->avoidBaseLocation.z,
+        position.rx,
+        position.ry,
+        position.rz
+      )));
+    executeServiceRequest(exitCommandBuilder.str());
+    return;
+  }
+
   executeServiceRequest(hoverAbove(position));
 }
 
 void CommandExecutor::placeBox(const BoxPosition& position)const {
   auto commandBuilder = ScriptBuilder();
-  commandBuilder.beginWithDefaultHeader();
-  commandBuilder.addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius));
-  commandBuilder.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
-  commandBuilder.addCommand(buildMovelCommand(position));
+  commandBuilder
+    .beginWithDefaultHeader()
+    .addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius))
+    .addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius))
+    .addCommand(buildMovelCommand(position));
   executeServiceRequest(commandBuilder.str());
 
   openGripper();
 
   auto commandBuilderExit = ScriptBuilder();
-  commandBuilderExit.beginWithDefaultHeader();
-  commandBuilderExit.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
-  commandBuilderExit.addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius));
+  commandBuilderExit
+    .beginWithDefaultHeader()
+    .addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius))
+    .addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius));
   executeServiceRequest(commandBuilderExit.str());
 }
 
@@ -286,27 +303,27 @@ void CommandExecutor::runPickAndPlaceSequence()const {
   // Need to approach from the side
   functions.emplace_back([&] { grabBox(boxPositions[13]); });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(4), initTarget.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
+    initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
   });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
     initTarget.x, initTarget.y + offsetBy(3), initTarget.z+ offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
   });
   functions.emplace_back([&] { openGripper(); });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(4), initTarget.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
+    initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
 
   // Need to approach from the side
   functions.emplace_back([&] { grabBox(boxPositions[8]);  });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(4), initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
+    initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
   functions.emplace_back([&] {executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
     initTarget.x, initTarget.y + offsetBy(3), initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
   functions.emplace_back([&] { openGripper(); });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(4), initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
+    initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
   executeActionsInSuccession(functions);
 }

@@ -27,5 +27,8 @@ struct ConfigLoader {
   Vec3<double> finalOrientation{};
   std::vector<BoxPosition> boxPositions;
   double blendingRadius;
+  double additionalBackAwayYSafety;
+  Vec3<double> avoidBaseLocation{};
+  bool shouldAvoidBaseLocation{};
 };
 #endif

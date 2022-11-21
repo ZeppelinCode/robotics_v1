@@ -24,6 +24,7 @@ int main(int32_t argc, char *argv[]) {
 
     std::cout << "going home" << std::endl;
     commandExecutor.executeServiceRequest(goToHome);
+    commandExecutor.closeGripper();
     commandExecutor.openGripper();
     std::cout << "running pick and place sequence" << std::endl;
     commandExecutor.runPickAndPlaceSequence();

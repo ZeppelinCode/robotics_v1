@@ -26,6 +26,11 @@ ConfigLoader::ConfigLoader() {
     this->finalOrientation.y = config["finalOrientationY"];
     this->finalOrientation.z = config["finalOrientationZ"];
     this->blendingRadius = config["blendingRadius"];
+    this->additionalBackAwayYSafety = config["additionalBackAwayYSafety"];
+    this->avoidBaseLocation.x = config["avoidBaseLocation"]["x"];
+    this->avoidBaseLocation.y = config["avoidBaseLocation"]["y"];
+    this->avoidBaseLocation.z = config["avoidBaseLocation"]["z"];
+    this->shouldAvoidBaseLocation = config["shouldAvoidBaseLocation"];
     
     std::cout << "config read:" << std::endl;
     std::cout << "isGripperEnabled: " << isGripperEnabled << std::endl;
@@ -45,6 +50,9 @@ ConfigLoader::ConfigLoader() {
     std::cout << "final ry: " << finalOrientation.y << std::endl;
     std::cout << "final rz: " << finalOrientation.z << std::endl;
     std::cout << "blending radius: " << blendingRadius << std::endl;
+    std::cout << "additional back away y safety: " << additionalBackAwayYSafety << std::endl;
+    std::cout << "avoid base location (" << avoidBaseLocation.x << ", " << avoidBaseLocation.y << ", " <<  avoidBaseLocation.z << ")" << std::endl;
+    std::cout << "should avoid base location(" << shouldAvoidBaseLocation << std::endl;
 
     std::cout << "loading box positions" << std::endl;
     this->boxPositions = bpl::loadBoxPositions();

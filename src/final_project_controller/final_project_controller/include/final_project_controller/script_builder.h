@@ -7,9 +7,9 @@
 class ScriptBuilder {
 public:
   ScriptBuilder();
-  void beginWithDefaultHeader();
+  ScriptBuilder& beginWithDefaultHeader();
   void beginWithCustomHeader(const std::string& customHeader);
-  void addCommand(const std::string& command); // TODO can be a fluent builder but don't want to fight C++ compiler
+  ScriptBuilder& addCommand(const std::string& command);
   std::string str();
 private:
   std::stringstream fullScript{};

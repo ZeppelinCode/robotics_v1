@@ -3,17 +3,24 @@
     "offsetBetweenBoxes": 0.115,
     "minimumHoverHeight": 0.32,
     "hoverAboveBox": 0.15,
-    "targetX": 0,
-    "targetY": -0.785,
+    "targetX": 0.05,
+    "targetY": -0.810,
     "targetZ": -0.057,
     "easyBoxRotationX": 0,
     "easyBoxRotationY": 3.14,
     "easyBoxRotationZ": 0,
-    "fourthStairWeirdRotationX": 0.197,
-    "fourthStairWeirdRotationY": -2.206,
-    "fourthStairWeirdRotationZ": 1.829,
-    "finalOrientationX": 0.197,
-    "finalOrientationY": -2.206,
-    "finalOrientationZ": 1.829,
-    "blendingRadius": 0.054
+    "fourthStairWeirdRotationX": 0.231,
+    "fourthStairWeirdRotationY": 2.414,
+    "fourthStairWeirdRotationZ": -2.047,
+    "finalOrientationX": 0.231,
+    "finalOrientationY": 2.414,
+    "finalOrientationZ": -2.047,
+    "blendingRadius": 0.054,
+    "additionalBackAwayYSafety": 0.01,
+    "avoidBaseLocation": {
+        "x": 0.491,
+        "y": -0.134,
+        "z": 0.4
+    },
+    "shouldAvoidBaseLocation": false
 }

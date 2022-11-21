@@ -5,16 +5,18 @@ constexpr auto INDENTATION = "  ";
 ScriptBuilder::ScriptBuilder() {
 }
 
-void ScriptBuilder::beginWithDefaultHeader() {
+ScriptBuilder& ScriptBuilder::beginWithDefaultHeader() {
     fullScript << "def script():\n";
+    return *this;
 }
 
 void ScriptBuilder::beginWithCustomHeader(const std::string& header) {
     fullScript << header << '\n';
 }
 
-void ScriptBuilder::addCommand(const std::string& command) {
+ScriptBuilder& ScriptBuilder::addCommand(const std::string& command) {
     fullScript << INDENTATION << command << '\n';
+    return *this;
 }
 
 std::string ScriptBuilder::str() {
