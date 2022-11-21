@@ -1,8 +1,9 @@
-
+#include <iostream>
 #include <algorithm> // std::min
 #include "final_project_controller/command_executor.h"
 #include "final_project_controller/config_loader.h"
 #include "final_project_controller/misc.h"
+#include "final_project_controller/script_builder.h"
 
 std::string goLinearlyTo(BoxPosition boxPosition) {
   std::stringstream acc;
@@ -49,6 +50,57 @@ std::string CommandExecutor::hoverAboveYMargin(const BoxPosition& boxPosition)co
   return acc.str();
 }
 
+std::string CommandExecutor::buildHoverAboveYMarginOnEntryMovel(const BoxPosition& boxPosition, double r)const {
+  std::stringstream acc;
+  acc << "movel(p[" 
+    << boxPosition.x
+    << ", " << boxPosition.y + configLoader->offsetBetweenBoxes
+    << ", " << std::max(configLoader->minimumHoverHeight, boxPosition.z + configLoader->hoverAboveBox) // 0.15
+    << ", " << boxPosition.rx
+    << ", " << boxPosition.ry
+    << ", " << boxPosition.rz
+    << "], a=1.0, v=0.8";
+  if (r != 0.0) {
+    acc << ", r=" << r;
+  }
+  acc << ")";
+  return acc.str();
+}
+
+std::string CommandExecutor::buildHoverAboveMovel(const BoxPosition& boxPosition, double r)const {
+  std::stringstream acc;
+  acc << "movel(p[" 
+    << boxPosition.x
+    << ", " << boxPosition.y
+    << ", " << std::max(configLoader->minimumHoverHeight, boxPosition.z + configLoader->hoverAboveBox) // 0.15
+    << ", " << boxPosition.rx
+    << ", " << boxPosition.ry
+    << ", " << boxPosition.rz
+    << "], a=1.0, v=0.8";
+  if (r != 0.0) {
+    acc << ", r=" << r;
+  }
+  acc << ")";
+  return acc.str();
+}
+
+std::string CommandExecutor::buildMovelCommand(const BoxPosition& boxPosition, double r)const {
+  std::stringstream acc;
+  acc << "movel(p[" 
+    << boxPosition.x
+    << ", " << boxPosition.y
+    << ", " << boxPosition.z
+    << ", " << boxPosition.rx
+    << ", " << boxPosition.ry
+    << ", " << boxPosition.rz
+    << "], a=1.0, v=0.8";
+  if (r != 0.0) {
+    acc << ", r=" << r;
+  }
+  acc << ")";
+  return acc.str();
+}
+
 std::string CommandExecutor::hoverAboveYMarginOnEntry(const BoxPosition& boxPosition)const {
   std::stringstream acc;
   acc << "def go_linearly_to():\n";
@@ -80,6 +132,7 @@ CommandExecutor::CommandExecutor(
 
   this->openGripperScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/open_gripper.urscript");
   this->closeGripperScript = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/close_gripper.urscript");
+  this->gripperHeader = misc::readFileToString("/home/ubuntu/workspace/robotics_v1/src/final_project_controller/final_project_controller/resources/gripper_header.urscript");
 }
 
 void CommandExecutor::executeServiceRequest(const std::string &scriptToExecute)const
@@ -124,23 +177,34 @@ void CommandExecutor::executeActionsInSuccession(const std::vector<std::function
 }
 
 void CommandExecutor::grabBox(const BoxPosition& position)const {
-    executeServiceRequest(hoverAbove(position));
-    executeServiceRequest(goLinearlyTo(position));
+  auto commandBuilder = ScriptBuilder();
+  commandBuilder.beginWithDefaultHeader();
+  commandBuilder.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
+  commandBuilder.addCommand(buildMovelCommand(position));
+  executeServiceRequest(commandBuilder.str());
 
+  if (configLoader->isGripperEnabled) {
     closeGripper();
-
-    executeServiceRequest(hoverAbove(position));
+  }
+  
+  executeServiceRequest(hoverAbove(position));
 }
 
 void CommandExecutor::placeBox(const BoxPosition& position)const {
-  // executeServiceRequest(hoverAboveYMargin(position));
-  executeServiceRequest(hoverAboveYMarginOnEntry(position));
-  executeServiceRequest(goLinearlyTo(position));
+  auto commandBuilder = ScriptBuilder();
+  commandBuilder.beginWithDefaultHeader();
+  commandBuilder.addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius));
+  commandBuilder.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
+  commandBuilder.addCommand(buildMovelCommand(position));
+  executeServiceRequest(commandBuilder.str());
 
   openGripper();
 
-  executeServiceRequest(hoverAbove(position));
-  executeServiceRequest(hoverAboveYMargin(position));
+  auto commandBuilderExit = ScriptBuilder();
+  commandBuilderExit.beginWithDefaultHeader();
+  commandBuilderExit.addCommand(buildHoverAboveMovel(position, configLoader->blendingRadius));
+  commandBuilderExit.addCommand(buildHoverAboveYMarginOnEntryMovel(position, configLoader->blendingRadius));
+  executeServiceRequest(commandBuilderExit.str());
 }
 
 double CommandExecutor::offsetBy(int n)const {

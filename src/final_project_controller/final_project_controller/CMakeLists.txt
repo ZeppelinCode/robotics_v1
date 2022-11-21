@@ -62,6 +62,8 @@ add_executable(
     ${_INC_DIR}/json_parser.h
     ${_INC_DIR}/command_executor.h
     ${_SRC_DIR}/command_executor.cpp
+    ${_INC_DIR}/script_builder.h
+    ${_SRC_DIR}/script_builder.cpp
 )
 
 target_include_directories(final_project_controller PUBLIC

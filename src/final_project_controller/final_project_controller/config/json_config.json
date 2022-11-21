@@ -14,5 +14,6 @@
     "fourthStairWeirdRotationZ": 1.829,
     "finalOrientationX": 0.197,
     "finalOrientationY": -2.206,
-    "finalOrientationZ": 1.829
+    "finalOrientationZ": 1.829,
+    "blendingRadius": 0.054
 }

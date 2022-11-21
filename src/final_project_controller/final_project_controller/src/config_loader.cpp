@@ -25,6 +25,7 @@ ConfigLoader::ConfigLoader() {
     this->finalOrientation.x = config["finalOrientationX"];
     this->finalOrientation.y = config["finalOrientationY"];
     this->finalOrientation.z = config["finalOrientationZ"];
+    this->blendingRadius = config["blendingRadius"];
     
     std::cout << "config read:" << std::endl;
     std::cout << "isGripperEnabled: " << isGripperEnabled << std::endl;
@@ -43,6 +44,7 @@ ConfigLoader::ConfigLoader() {
     std::cout << "final rx: " << finalOrientation.x << std::endl;
     std::cout << "final ry: " << finalOrientation.y << std::endl;
     std::cout << "final rz: " << finalOrientation.z << std::endl;
+    std::cout << "blending radius: " << blendingRadius << std::endl;
 
     std::cout << "loading box positions" << std::endl;
     this->boxPositions = bpl::loadBoxPositions();

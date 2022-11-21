@@ -2327,12 +2327,3 @@ def Gripper():
   while(not rq_gripper_communication_thread_started):
     sync()
   end
-  
-  rq_activate_and_wait ()
-  rq_set_speed_norm (100)
-
-  # open
-  rq_close_and_wait ()
-end
-
-

@@ -26,6 +26,7 @@ private:
 
   std::string openGripperScript;
   std::string closeGripperScript;
+  std::string gripperHeader;
 
   void grabBox(const BoxPosition& position)const;
   void placeBox(const BoxPosition& position)const;
@@ -33,6 +34,9 @@ private:
   std::string hoverAbove(const BoxPosition& boxPosition)const;
   std::string hoverAboveYMargin(const BoxPosition& boxPosition)const;
   std::string hoverAboveYMarginOnEntry(const BoxPosition& boxPosition)const;
+  std::string buildHoverAboveYMarginOnEntryMovel(const BoxPosition& boxPosition, double r=0.0)const;
+  std::string buildHoverAboveMovel(const BoxPosition& boxPosition, double r=0.0)const;
+  std::string buildMovelCommand(const BoxPosition& boxPosition, double r=0.0)const;
   double offsetBy(int n)const;
 };
 #endif

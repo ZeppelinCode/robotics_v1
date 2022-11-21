@@ -26,5 +26,6 @@ struct ConfigLoader {
   Vec3<double> fourthStairWeirdRotations{};
   Vec3<double> finalOrientation{};
   std::vector<BoxPosition> boxPositions;
+  double blendingRadius;
 };
 #endif
