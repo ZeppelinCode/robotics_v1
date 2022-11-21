@@ -16,7 +16,7 @@
     "finalOrientationY": 2.414,
     "finalOrientationZ": -2.047,
     "blendingRadius": 0.054,
-    "additionalBackAwayYSafety": 0.03,
+    "additionalBackAwayYSafety": 0.05,
     "avoidBaseLocation": {
         "x": 0.491,
         "y": -0.134,
