@@ -968,7 +968,7 @@ def Gripper():
     if(gripper_connected[1]):
       while(rq_read_snu_2 == rq_string_initial_value):
         socket_send_string("GET SNU", "2")
-          rq_read_snu_2 = socket_read_string("2")
+        rq_read_snu_2 = socket_read_string("2")
       end
 
       while(rq_read_fwv_2 == rq_string_initial_value):
@@ -1241,8 +1241,8 @@ def Gripper():
   end
   
   def rq_move(pos, gripper_socket="1"):
-      rq_set_pos(pos, gripper_socket)
-      rq_go_to(gripper_socket)
+    rq_set_pos(pos, gripper_socket)
+    rq_go_to(gripper_socket)
   end
   
   def rq_move_and_wait(pos, gripper_socket="1"):
