@@ -31,6 +31,12 @@ ConfigLoader::ConfigLoader() {
     this->avoidBaseLocation.y = config["avoidBaseLocation"]["y"];
     this->avoidBaseLocation.z = config["avoidBaseLocation"]["z"];
     this->shouldAvoidBaseLocation = config["shouldAvoidBaseLocation"];
+    this->weirdAnglePlaceCompensation.x = config["weirdAnglePlaceCompensation"]["x"];
+    this->weirdAnglePlaceCompensation.y = config["weirdAnglePlaceCompensation"]["y"];
+    this->weirdAnglePlaceCompensation.z = config["weirdAnglePlaceCompensation"]["z"];
+    this->weirdAnglePickCompensation.x = config["weirdAnglePickCompensation"]["x"];
+    this->weirdAnglePickCompensation.y = config["weirdAnglePickCompensation"]["y"];
+    this->weirdAnglePickCompensation.z = config["weirdAnglePickCompensation"]["z"];
     
     std::cout << "config read:" << std::endl;
     std::cout << "isGripperEnabled: " << isGripperEnabled << std::endl;

@@ -30,5 +30,7 @@ struct ConfigLoader {
   double additionalBackAwayYSafety;
   Vec3<double> avoidBaseLocation{};
   bool shouldAvoidBaseLocation{};
+  Vec3<double> weirdAnglePlaceCompensation{};
+  Vec3<double> weirdAnglePickCompensation{};
 };
 #endif

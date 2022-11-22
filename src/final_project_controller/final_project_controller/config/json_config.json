@@ -9,12 +9,12 @@
     "easyBoxRotationX": 0,
     "easyBoxRotationY": 3.14,
     "easyBoxRotationZ": 0,
-    "fourthStairWeirdRotationX": 0.231,
-    "fourthStairWeirdRotationY": 2.414,
-    "fourthStairWeirdRotationZ": -2.047,
-    "finalOrientationX": 0.231,
-    "finalOrientationY": 2.414,
-    "finalOrientationZ": -2.047,
+    "fourthStairWeirdRotationX": 0.133,
+    "fourthStairWeirdRotationY": -2.686,
+    "fourthStairWeirdRotationZ": 0.788,
+    "finalOrientationX": 0.133,
+    "finalOrientationY": -2.686,
+    "finalOrientationZ": 0.788,
     "blendingRadius": 0.054,
     "additionalBackAwayYSafety": 0.05,
     "avoidBaseLocation": {
@@ -22,5 +22,15 @@
         "y": -0.134,
         "z": 0.4
     },
-    "shouldAvoidBaseLocation": false
+    "shouldAvoidBaseLocation": false,
+    "weirdAnglePlaceCompensation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    },
+    "weirdAnglePickCompensation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+    }
 }

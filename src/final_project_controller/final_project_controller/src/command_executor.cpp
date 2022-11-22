@@ -281,11 +281,15 @@ void CommandExecutor::runPickAndPlaceSequence()const {
   // Fourth stair: weird pick orientation
   functions.emplace_back([&] { grabBox(boxPositions[12]);  });
   functions.emplace_back([&] { placeBox(BoxPosition( // 0.197, -2.206, 1.829
-    initTarget.x, initTarget.y+ offsetBy(3), initTarget.z + offsetBy(2), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
+    initTarget.x + configLoader->weirdAnglePlaceCompensation.x, 
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + + configLoader->weirdAnglePlaceCompensation.z + offsetBy(2), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
   });
   functions.emplace_back([&] { grabBox(boxPositions[6]);  });
   functions.emplace_back([&] { placeBox( // 0.197, -2.206, 1.829
-    BoxPosition(initTarget.x, initTarget.y + offsetBy(3), initTarget.z + offsetBy(3), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
+    BoxPosition(initTarget.x + configLoader->weirdAnglePlaceCompensation.x,
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + configLoader->weirdAnglePlaceCompensation.z + offsetBy(3), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
   });
 
   // 8, 6, 14, 9
@@ -293,11 +297,15 @@ void CommandExecutor::runPickAndPlaceSequence()const {
   // Can be done by hovering above
   functions.emplace_back([&] { grabBox(boxPositions[7]);  });
   functions.emplace_back([&] { placeBox(  // 0.197, -2.206, 1.829
-    BoxPosition(initTarget.x, initTarget.y + offsetBy(3), initTarget.z + offsetBy(4), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
+    BoxPosition(initTarget.x + configLoader->weirdAnglePlaceCompensation.x,
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + configLoader->weirdAnglePlaceCompensation.z + offsetBy(4), weird4sTargetRotations.x, weird4sTargetRotations.y, weird4sTargetRotations.z));
   });
   functions.emplace_back([&] { grabBox(boxPositions[5]);  });
   functions.emplace_back([&] { placeBox(BoxPosition(
-    initTarget.x, initTarget.y + offsetBy(3), initTarget.z + offsetBy(5), easyRotations.x, easyRotations.y, easyRotations.z));
+    initTarget.x + configLoader->weirdAnglePlaceCompensation.x,
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + configLoader->weirdAnglePlaceCompensation.z + offsetBy(5), easyRotations.x, easyRotations.y, easyRotations.z));
   });
 
   // Need to approach from the side
@@ -306,7 +314,9 @@ void CommandExecutor::runPickAndPlaceSequence()const {
     initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
   });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(3), initTarget.z+ offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
+    initTarget.x + configLoader->weirdAnglePlaceCompensation.x,
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + configLoader->weirdAnglePlaceCompensation.z + offsetBy(6), finalOrientation.x, finalOrientation.y, finalOrientation.z))); 
   });
   functions.emplace_back([&] { openGripper(); });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
@@ -319,7 +329,9 @@ void CommandExecutor::runPickAndPlaceSequence()const {
     initTarget.x, initTarget.y + offsetBy(4) + configLoader->additionalBackAwayYSafety, initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
   functions.emplace_back([&] {executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
-    initTarget.x, initTarget.y + offsetBy(3), initTarget.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
+    initTarget.x + configLoader->weirdAnglePlaceCompensation.x,
+    initTarget.y + configLoader->weirdAnglePlaceCompensation.y + offsetBy(3),
+    initTarget.z + configLoader->weirdAnglePlaceCompensation.z + offsetBy(7), finalOrientation.x, finalOrientation.y, finalOrientation.z)));
   });
   functions.emplace_back([&] { openGripper(); });
   functions.emplace_back([&] { executeServiceRequest(goLinearlyTo(BoxPosition( // 0.022, -2.758, 2.493
