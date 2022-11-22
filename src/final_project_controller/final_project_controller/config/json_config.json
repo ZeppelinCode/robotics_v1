@@ -25,8 +25,8 @@
     "shouldAvoidBaseLocation": false,
     "weirdAnglePlaceCompensation": {
         "x": 0,
-        "y": 0,
-        "z": 0
+        "y": 0.01,
+        "z": 0.02
     },
     "weirdAnglePickCompensation": {
         "x": 0,
